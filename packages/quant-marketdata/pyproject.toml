@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-marketdata"
+version = "0.1.0"
+description = "Point-in-time MarketData.app client and external Parquet store for quantitative research."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Quant MarketData Contributors"}]
+dependencies = [
+  "pandas>=2.0,<3.0",
+  "pyarrow>=14.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"

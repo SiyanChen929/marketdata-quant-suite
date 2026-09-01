@@ -1,0 +1,33 @@
+suite: marketdata-quant-suite
+market_price_provider: marketdata
+credential_env: MARKETDATA_TOKEN
+data_home_env: QUANT_DATA_HOME
+
+storage:
+  raw: raw/marketdata
+  confirmed: lake/confirmed
+  provisional: staging/provisional
+  manifests: manifests
+  partition_dimensions: [finality, resolution, year]
+
+canonical_ohlcv:
+  columns: [date, symbol, open, high, low, close, volume, source, finality]
+  primary_key_within_resolution: [symbol, date]
+  allowed_finality: [confirmed, provisional]
+
+projects:
+  - id: quant-research-platform
+    role: research_portfolio_risk_execution_engine
+    price_input: confirmed
+  - id: equity-pairs-research
+    role: statistical_arbitrage_case_study
+    price_input: confirmed
+  - id: index-rebalance-event-study
+    role: event_driven_case_study
+    price_input: confirmed
+
+policy:
+  allow_secondary_price_providers: false
+  allow_provisional_formal_backtests: false
+  commit_vendor_data: false
+  submit_live_orders: false

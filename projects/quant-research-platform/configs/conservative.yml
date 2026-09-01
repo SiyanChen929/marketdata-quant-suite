@@ -1,0 +1,65 @@
+data_provider: "csv"
+data_path: "data/sample/ohlcv.csv"
+fundamentals_path: "data/sample/fundamentals.csv"
+events_path: "data/sample/events.csv"
+output_dir: "runs"
+start_date: "2018-01-01"
+end_date: null
+timeframe: "1d"
+universe:
+  base: "us_equities"
+  custom_symbols: ["SPY", "QQQ", "SMH", "NVDA", "AMD", "AVGO", "CEG", "VST", "FCX", "SCCO"]
+  benchmark: "SPY"
+  min_price: 5
+  min_avg_dollar_volume_20d: 30000000
+  min_avg_volume_20d: 700000
+  min_history_days: 252
+portfolio:
+  initial_capital: 100000
+  max_position_weight: 0.05
+  target_gross_exposure: 0.75
+  target_net_exposure: 0.25
+  volatility_target: 0.15
+  rebalance: "monthly"
+execution:
+  slippage_bps: 5
+  commission_per_share: 0.005
+  short_borrow_fee_annual: 0.03
+risk:
+  max_drawdown_reduce_exposure: 0.08
+  max_drawdown_cash_mode: 0.15
+  drawdown_reset: "yearly"
+fundamentals:
+  enabled: true
+events:
+  enabled: true
+  earnings_mode: "avoid"
+strategies:
+  momentum:
+    enabled: true
+    weight: 0.45
+    lookback_returns: 126
+    skip_recent_days: 5
+    long_quantile: 0.15
+    short_quantile: 0.15
+    max_positions: 20
+  breakout:
+    enabled: true
+    weight: 0.25
+    breakout_window: 100
+    retest_ma: 20
+    volume_multiplier: 1.5
+    stop_loss_atr: 2.0
+    trailing_stop_atr: 3.0
+    max_holding_days: 45
+  trend:
+    enabled: true
+    weight: 0.30
+    ma_fast: 50
+    ma_slow: 200
+    stop_loss_atr: 2.5
+    trailing_stop_atr: 3.5
+    max_holding_days: 120
+  mean_reversion:
+    enabled: false
+    weight: 0.0

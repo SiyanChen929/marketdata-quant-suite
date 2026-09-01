@@ -1,0 +1,31 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Market/vendor data and derived research artifacts never belong in Git.
+data/cache/
+data/lake/
+data/raw/
+data/processed/
+data/staging/
+runs/
+reports/
+outputs/
+logs/
+*.pkl
+*.pickle
+*.parquet
+
+# Keep only the intentionally small offline fixtures.
+!data/sample/
+!data/sample/**

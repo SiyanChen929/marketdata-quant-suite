@@ -1,0 +1,37 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# External vendor data and generated research artifacts.
+# Anchor the suite-level data directory so project-owned synthetic fixtures can
+# be tracked; each project has narrower rules for its own vendor-data folders.
+/data/
+raw/
+lake/
+staging/
+cache/
+runs/
+reports/
+outputs/
+logs/
+*.csv
+*.parquet
+*.pkl
+*.pickle
+*.duckdb
+
+# Project-owned synthetic fixtures are explicitly retained.
+!**/data/sample/
+!**/data/sample/**
+!**/tests/fixtures/
+!**/tests/fixtures/**

@@ -1,0 +1,38 @@
+{
+  "research": {
+    "years": 8,
+    "formation_years": 5,
+    "top_pairs_per_sector": 10,
+    "minimum_history_ratio": 0.90,
+    "minimum_formation_observations": 756,
+    "cointegration_alpha": 0.05,
+    "maximum_half_life_days": 252,
+    "adf_maxlag": 5,
+    "exclude_same_issuer": true,
+    "workers": 4
+  },
+  "strategy": {
+    "zscore_method": "sma",
+    "zscore_lookback": 60,
+    "zscore_min_periods": 40,
+    "entry_z": 2.0,
+    "exit_z": 0.5,
+    "stop_z": 4.0,
+    "maximum_holding_days": 60,
+    "transaction_cost_bps": 5.0,
+    "transaction_cost_scenarios_bps": [2.5, 5.0, 10.0, 20.0],
+    "annual_short_borrow_bps": 30.0,
+    "minimum_trades_for_ranking": 3
+  },
+  "macro": {
+    "series": {
+      "DFF": "Effective Federal Funds Rate",
+      "DGS2": "2-Year Treasury Yield",
+      "DGS10": "10-Year Treasury Yield",
+      "CPIAUCSL": "Consumer Price Index",
+      "UNRATE": "Unemployment Rate",
+      "USREC": "NBER Recession Indicator",
+      "VIXCLS": "CBOE Volatility Index"
+    }
+  }
+}

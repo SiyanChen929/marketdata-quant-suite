@@ -1,0 +1,29 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/quant-marketdata/pyproject.toml
+            projects/quant-research-platform/pyproject.toml
+            projects/equity-pairs-research/pyproject.toml
+            projects/index-rebalance-event-study/pyproject.toml
+      - name: Install suite
+        run: ./scripts/bootstrap.sh
+      - name: Test all modules
+        run: ./scripts/test-all.sh
+      - name: Audit public repository
+        run: python scripts/repository-audit.py

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "equity-pairs-research"
+version = "0.1.0"
+description = "Auditable, held-out equity pairs research on confirmed MarketData bars"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "jinja2>=3.1,<4",
+  "lxml>=5,<7",
+  "matplotlib>=3.8,<4",
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "quant-marketdata>=0.1,<0.2",
+  "requests>=2.31,<3",
+  "scikit-learn>=1.4,<2",
+  "scipy>=1.12,<2",
+  "statsmodels>=0.14,<0.15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+equity-pairs = "equity_pairs.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

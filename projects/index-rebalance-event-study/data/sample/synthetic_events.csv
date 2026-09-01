@@ -1,0 +1,5 @@
+announcement_date,effective_close_date,segment,action,security_name,symbol,change_type,source_id,is_synthetic
+2035-01-08,2035-01-12,primary,add,Northstar Synthetic Labs,ZZZADD,new_to_primary,synthetic_review_001,true
+2035-01-08,2035-01-12,primary,delete,Blue Mesa Fictional Industries,ZZZDEL,exit_primary,synthetic_review_001,true
+2035-04-09,2035-04-13,primary,add,Cedar Point Imaginary Systems,ZZZUP,up_from_secondary,synthetic_review_002,true
+2035-04-09,2035-04-13,primary,delete,Juniper Test Manufacturing,ZZZDOWN,down_to_secondary,synthetic_review_002,true

@@ -1,0 +1,39 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# All real or licensed research inputs stay outside the repository.
+data/*
+!data/sample/
+data/sample/*
+!data/sample/synthetic_events.csv
+private-data/
+licensed-data/
+marketdata/
+auction-data/
+nbbo-data/
+
+# Generated research artifacts.
+outputs/
+reports/
+runs/
+logs/
+*.parquet
+*.feather
+*.pdf
+*.zip
+
+# Provider-specific discovery/download scratch files are intentionally excluded.
+*query_yahoo_symbols*
+*download_audit*
+*download_manifest*

@@ -1,0 +1,137 @@
+data_provider: "csv"
+data_path: "data/sample/ohlcv.csv"
+fundamentals_path: "data/sample/fundamentals.csv"
+events_path: "data/sample/events.csv"
+output_dir: "runs"
+start_date: "2018-01-01"
+end_date: "2026-05-06"
+timeframe: "1d"
+
+universe:
+  mode: "dynamic"
+  base: "us_equities"
+  include_etfs: true
+  symbols: ["SPY", "QQQ", "SMH", "NVDA", "AMD", "AVGO", "CEG", "VST", "FCX", "SCCO"]
+  custom_symbols: ["SPY", "QQQ", "SMH", "NVDA", "AMD", "AVGO", "CEG", "VST", "FCX", "SCCO"]
+  custom_only: false
+  benchmark: "SPY"
+  min_price: 5
+  aggressive_min_price: 2
+  min_market_cap: 500000000
+  min_avg_dollar_volume_20d: 20000000
+  min_avg_volume_20d: 500000
+  min_history_days: 252
+  exclude_otc: true
+  exclude_pink_sheets: true
+  exclude_leveraged_etfs: true
+  exclude_inverse_etfs: true
+  require_short_borrow_for_shorts: true
+  max_short_borrow_fee_annual: 0.10
+  allow_speculative_bucket: true
+  speculative_bucket_max_gross: 0.10
+
+fundamentals:
+  enabled: true
+  provider: "csv"
+  sector_neutral: true
+  winsorize_pct: 0.01
+  weights:
+    growth: 0.25
+    quality: 0.25
+    balance_sheet: 0.20
+    valuation: 0.15
+    revision: 0.15
+  long_min_score: 40
+  short_max_score: 40
+
+events:
+  enabled: true
+  provider: "csv"
+  earnings_mode: "risk_reduce"
+  no_new_positions_before_earnings_days: 7
+  reduce_position_before_earnings_days: 2
+  exit_position_before_earnings_days: 1
+  resume_after_earnings_days: 2
+  earnings_risk_multiplier: 0.5
+  block_high_event_risk: true
+  max_event_risk_score_for_normal_strategies: 70
+
+regime:
+  enabled: true
+  allow_current_year_optimization: false
+  train_start: "2015-01-01"
+  train_end: "2023-12-31"
+  validation_start: "2024-01-01"
+  validation_end: "2025-12-31"
+  forward_start: "2026-01-01"
+  risk_on_vol_threshold: 0.30
+  theme_activation_threshold: 60
+
+execution:
+  signal_timing: "close_to_next_open"
+  fill_price: "open"
+  slippage_bps: 5
+  commission_per_share: 0.005
+  short_borrow_fee_annual: 0.03
+  cash_rate_annual: 0.0
+
+portfolio:
+  initial_capital: 100000
+  construction: "score_weighted"
+  max_position_weight: 0.10
+  target_gross_exposure: 1.0
+  target_net_exposure: 0.5
+  volatility_target: 0.25
+  rebalance: "weekly"
+
+risk:
+  max_drawdown_reduce_exposure: 0.12
+  max_drawdown_cash_mode: 0.20
+  drawdown_reduction_multiplier: 0.5
+  atr_stop_multiple: 2.5
+  trailing_stop_atr_multiple: 3.0
+  drawdown_reset: "yearly"
+
+strategies:
+  momentum:
+    enabled: true
+    weight: 0.35
+    lookback_returns: 63
+    skip_recent_days: 5
+    long_quantile: 0.2
+    short_quantile: 0.2
+    max_positions: 20
+  breakout:
+    enabled: true
+    weight: 0.35
+    breakout_window: 55
+    retest_ma: 20
+    volume_multiplier: 1.3
+    stop_loss_atr: 2.5
+    trailing_stop_atr: 3.0
+    take_profit_r_multiple: 0.0
+    max_holding_days: 60
+  trend:
+    enabled: true
+    weight: 0.20
+    ma_fast: 50
+    ma_slow: 200
+    stop_loss_atr: 3.0
+    trailing_stop_atr: 4.0
+    max_holding_days: 120
+  mean_reversion:
+    enabled: false
+    weight: 0.10
+    long_rsi: 35
+    short_rsi: 70
+    stop_loss_atr: 1.5
+    trailing_stop_atr: 2.0
+    take_profit_r_multiple: 1.5
+    max_holding_days: 15
+
+ensemble:
+  technical_score: 0.30
+  relative_strength_score: 0.25
+  theme_score: 0.20
+  fundamental_score: 0.15
+  event_risk_penalty: -0.10
