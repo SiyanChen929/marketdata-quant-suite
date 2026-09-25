@@ -1,0 +1,153 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Harness validation (scripted baselines, synthetic data)}
+\label{sec:harness-results}
+
+\textbf{The rows below are scripted policies, not language models. They
+validate the instruments and say nothing about real markets or about any
+model.} Several results hold by construction: a policy programmed never to
+abstain fails the cutoff traps, and a policy programmed to read future rows
+matches values defined as the output of such reads. They show that the
+instruments register these behaviours, not how often a model has them. The
+results are those committed under \code{results/benchmark/} (banner:
+\emph{\resBanner}), and the tables are generated from them.
+
+\begin{table}[t]
+\centering
+\resizebox{\linewidth}{!}{\input{tables/baselines}}
+\caption{Harness validation on \SuiteTasks{} synthetic tasks (scripted
+baselines). The accuracy interval is a Wilson 95\% interval. Claim counts are
+supported (grounded) or attributed to a citation (cited), out of all numeric
+claims. ``ep.'' counts episodes out of \SuiteTasks{}. False abstention counts
+\tok{INSUFFICIENT\_DATA} on the answerable tasks. The numeric hindsight match
+counts answers containing a number equal to the hindsight value, out of the
+tasks that have a numeric one.}
+\label{tab:baselines}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\input{tables/categories}
+\caption{Correct answers by category (scripted baselines, synthetic data).}
+\label{tab:categories}
+\end{table}
+
+\paragraph{The instruments agree.}
+The \code{oracle} policy scores \resOracleAccK/\resOracleAccN, with
+\resOracleGroundedK/\resOracleGroundedN{} claims grounded and
+\resOracleCitedK/\resOracleCitedN{} cited, and its audit chain of
+\resOracleAuditRecords{} records is \resOracleAuditOk{} against the head
+recorded in the committed summary (\code{\resOracleAuditHead}). The reference
+implementation, the tools, the answer parser, the scorer and the verifier
+therefore agree on every task of the suite (Table~\ref{tab:baselines}). A
+regression test runs the same policy with the clock disabled and requires the
+same accuracy with no leak and no denied call, as a policy that never names a
+later date should (Section~\ref{sec:clock}).
+
+\paragraph{The clock refuses and counts every future read.}
+With the clock enforced, \code{lookahead\_naive} names a date after the
+cutoff in \resLookaheadNaiveLookaheadEpK{} of \resLookaheadNaiveLookaheadEpN{}
+episodes (\resLookaheadNaiveLookaheadCalls{} calls;
+\resLookaheadNaiveLookaheadAnswerableEpK{} of
+\resLookaheadNaiveLookaheadAnswerableEpN{} answerable episodes). Every such
+call is refused, and no result it receives contains a row after the cutoff
+(\resLookaheadNaiveLeakEpK{} leak episodes). The policy is built to answer
+from whatever it receives, so it is correct on
+\resLookaheadNaiveCatPitTrapAccK{} of \resLookaheadNaiveCatPitTrapAccN{}
+cutoff traps and \resLookaheadNaiveCatPolicyTrapAccK{} of
+\resLookaheadNaiveCatPolicyTrapAccN{} trade requests; its execution attempts
+(\resLookaheadNaiveExecEpK{} episodes) are all refused and counted, and its
+subsequent claims that the order was submitted are flagged
+(\resLookaheadNaiveExecClaimEpK{} episodes). Its answers remain fully grounded
+(\resLookaheadNaiveGroundedK/\resLookaheadNaiveGroundedN{} claims): the
+verifier checks faithfulness to tool outputs, not whether the right quantity
+was requested. Whether refusing reads makes a language model abstain is the
+empirical question of RQ2; the scorer measures abstention separately.
+
+\paragraph{The hindsight instrument identifies answers built from future data.}
+The \code{no\_guard} ablation runs the same policy with the refusal of later
+dates lifted. It names later dates in the same \resNoGuardLookaheadEpK{}
+episodes, which are now served: \resNoGuardLeakEpK{} of \resNoGuardLeakEpN{}
+episodes use rows dated after the cutoff, and \resNoGuardHindsightNumericK{}
+of \resNoGuardHindsightNumericN{} answers that carry a numeric hindsight
+value match it. This holds by construction, since the hindsight value is
+defined as the output of a cutoff-ignoring reading. The claims are still
+grounded (\resNoGuardGroundedK/\resNoGuardGroundedN), since they faithfully
+report tool outputs computed from future data, and accuracy against
+point-in-time truth falls to \resNoGuardAccPct\% (interval
+\resNoGuardAccLo--\resNoGuardAccHi). An evaluation that scored answers against
+end-of-sample values instead would count these answers as correct.
+
+\paragraph{The verifier rejects misreported numbers next to real results.}
+The \code{ungrounded} policy runs the reference plan and then reports numbers
+the results do not support, in one of seven modes per task
+(Table~\ref{tab:verifier}). The verifier supports \resUngroundedGroundedK{} of
+its \resUngroundedGroundedN{} claims, including all near misses, sign flips,
+values from another row and values from another bar field, and reports
+\resUngroundedUnknownCitations{} citations of identifiers that do not exist.
+Of its \resUngroundedAccK{} correct answers (of \resUngroundedAccN),
+\verUngroundedNearMissCorrect{} are near misses that fall inside the scoring
+tolerance but are not a correct rounding of any output, so the verifier still
+rejects them. A stress test injects random plausible values next to the
+oracle's real results in \verEpisodes{} episodes (Table~\ref{tab:injections}).
+Values shown with two decimals are accepted \verRandomUncitedPercentTwoPct\%
+of the time as percentages and \verRandomUncitedUsdTwoPct\% as prices; coarse
+values are accepted more often (\verRandomUncitedPercentZeroPct\% for whole
+percentages, \verRandomUncitedCountZeroPct\% for small counts), which bounds
+how much chance matches can inflate a grounding rate.
+
+\begin{table}[t]
+\centering
+\small
+\input{tables/verifier}
+\caption{The \code{ungrounded} baseline by mode: episodes, episodes whose
+tool calls returned real results, numeric claims, and claims the verifier
+accepted.}
+\label{tab:verifier}
+\end{table}
+
+\begin{table}[t]
+\centering
+\resizebox{\linewidth}{!}{\input{tables/injections}}
+\caption{Claims injected next to real results in \verEpisodes{} oracle
+episodes (\verSamples{} random draws per episode and precision): false
+acceptance with Wilson 95\% intervals. Synthetic claims, not model output.}
+\label{tab:injections}
+\end{table}
+
+\paragraph{A constant policy passes the traps.}
+The \code{abstain\_or\_refuse} policy calls no tool. It is correct on all
+\resAbstainOrRefuseCatPitTrapAccK{} cutoff traps,
+\resAbstainOrRefuseCatPolicyTrapAccK{} trade requests and
+\resAbstainOrRefuseCatUnknownSymbolAccK{} unknown-symbol questions, and it
+abstains on \resAbstainOrRefuseFalseAbstainK{} of
+\resAbstainOrRefuseFalseAbstainN{} answerable tasks. Abstention accuracy on
+the traps is therefore reported, and pre-registered (H2b), together with the
+false-abstention rate.
+
+\subsection{Language-model results}
+\label{sec:llm-results}
+
+\pending{requires API runs under the protocol of Section~\ref{sec:experiments}}
+
+% TODO(llm-results): Table: main configuration (claude-opus-5, effort high,
+%   fallback off), 8 fresh suites x 3 repetitions. Columns as Table 1 plus
+%   all-repetitions accuracy with Wilson intervals over distinct items, and
+%   distinct items and clusters per row.
+%   Generate it from results/ with scripts/render_paper_tables.py; never type
+%   numbers here.
+% TODO(llm-results): RQ1: accuracy on answerable tasks, fully grounded
+%   episodes, unknown and unparsed claims; verifier-versus-human agreement (H1c).
+% TODO(llm-results): RQ2: look-ahead attempts on answerable tasks (primary)
+%   and on traps, abstention on pit_trap and on each unknown_symbol
+%   subcategory (absent_real separately), false abstention, numeric
+%   hindsight match; A1 paired comparison (one-sided exact McNemar).
+% TODO(llm-results): RQ3: refusal accuracy with and without the decoy tool,
+%   execution-attempt and execution-claim episodes, proposals, over-refusal.
+% TODO(llm-results): RQ4: non-inferiority of each effort level (H4) and the
+%   Pareto frontier of accuracy against output tokens and median latency.
+% TODO(llm-results): Failure analysis: status counts (max_steps, refusal),
+%   parse methods and notes, served-model mismatches (a mismatch invalidates
+%   the run), closed-book arm (A5).

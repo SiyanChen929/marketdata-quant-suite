@@ -1,0 +1,70 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Large language models are increasingly used as research assistants in finance,
+from domain-specific models~\citep{wu2023bloomberggpt} to studies that ask
+whether model judgments predict returns~\citep{lopezlira2023chatgpt}. A common
+design gives the model tools that read market data and compute statistics,
+following the reasoning-and-acting pattern of tool-using agents~\citep{yao2023react,schick2023toolformer}.
+A copilot of this kind is only useful for research if three properties hold,
+and none of them can be checked by reading the final answer.
+
+\paragraph{Point-in-time discipline.}
+A question posed ``as of'' a date $t$ must be answered with information
+available at $t$. Look-ahead bias is the classic failure of backtests, and
+language models add a second channel: facts memorized during
+training~\citep{glasserman2023lookahead}. A tool layer that silently clamps a
+request for a later date to $t$ hides the attempt. An answer built from future
+rows can also look correct to an evaluator who scores it against hindsight.
+
+\paragraph{Numeric grounding.}
+Every number in an answer should be traceable to a recorded computation.
+Fluent but unsupported output is a well-documented failure of language
+generation~\citep{ji2023hallucination}. In quantitative work a plausible
+volatility that no tool computed is worse than no answer.
+
+\paragraph{Action safety.}
+A copilot that can reach an order-entry path can be talked into trading,
+including by instructions that claim prior approval. Research governance
+therefore requires that agents may propose bounded actions but never execute
+them without explicit human confirmation.
+
+\medskip
+This paper asks whether a tool-using LLM copilot can answer quantitative
+market questions with verifiable grounding while respecting point-in-time and
+execution constraints, and how to measure that. Our position is that each
+property has to be made \emph{observable by construction} before it can be
+measured. The contributions are:
+
+\begin{enumerate}
+  \item \textbf{A governed copilot architecture} (Section~\ref{sec:system}).
+  Data are read only through a confirmed-only point-in-time view. The as-of
+  clock refuses rather than clamps later dates, so attempts can be counted. A
+  policy gate checks every tool call before any handler runs and cannot be
+  configured to allow execution. Order ideas become inert proposals that await
+  human approval.
+  \item \textbf{A point-in-time benchmark with trap categories}
+  (Section~\ref{sec:benchmark}). The \SuiteTasks{} deterministic tasks
+  include cutoff traps worded exactly like answerable questions, trade requests
+  with false authority claims, and unknown or not-yet-listed symbols. Ground
+  truth comes from an independent reference implementation, and hindsight
+  values reveal answers built from future data.
+  \item \textbf{A rounding-aware numeric grounding metric}
+  (Section~\ref{sec:grounding}) that attributes each numeric claim to a
+  citation and accepts it only if it is a correct rounding, with the right
+  sign, of an output of the cited result that the text actually refers to.
+  \item \textbf{An audit and provenance design}
+  (Section~\ref{sec:provenance}). Content-addressed result identifiers are
+  derived from the exact rows used, and a hash-chained log whose head is
+  recorded in the committed run summary makes the record of every model call
+  and tool attempt tamper-evident.
+\end{enumerate}
+
+\paragraph{Status of the evidence.}
+This draft reports only \emph{harness validation}: scripted baselines and
+synthetic claims on synthetic data, which show that the instruments register
+what they claim to register (Section~\ref{sec:results}). The same harness
+drives a Claude backend, and the protocol for language-model runs, with its
+hypotheses and power analysis, is fixed in Section~\ref{sec:experiments}.
+Those runs have not been executed.
+\pending{language-model results for RQ1--RQ4}

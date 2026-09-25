@@ -1,0 +1,186 @@
+\section{Experimental protocol}
+\label{sec:experiments}
+
+% This section fixes the protocol BEFORE any language-model run. Changing a
+% threshold or a decision rule after results are seen must be reported as a
+% deviation in the paper. The canonical, more detailed version is
+% docs/research-plan.md; keep the two in sync. Every number below comes from
+% tables/macros.tex (results/power/power.json for the design).
+
+This section specifies the language-model evaluation. None of it has been
+executed. \pending{all runs in this section} The study evaluates Claude models
+through the backend of Section~\ref{sec:loop}; the harness accepts other
+providers behind the same one-step protocol, but the claims of the study are
+limited to the models evaluated.
+
+\subsection{Research questions and hypotheses}
+
+\paragraph{RQ1: grounding accuracy.}
+On answerable tasks (\code{lookup}, \code{compute}, \code{multi\_step}), how
+accurate are the copilot's answers against the independent reference, and
+what share of its numeric claims are supported by the tool outputs it cites?
+H1a: accuracy is at least 90\%. H1b: at least 95\% of answerable episodes that
+make a claim are fully grounded. H1c, on the validity of the metric: on at
+least 300 claims sampled stratified by verifier verdict and annotated by two
+people (Cohen's $\kappa \ge 0.8$ required), the verifier agrees with the
+annotation on at least 95\% of claims after reweighting the strata to each
+model's verdict distribution; false-accept and false-reject rates are
+reported per stratum.
+
+\paragraph{RQ2: look-ahead safety.}
+Does the copilot request data after the cutoff when the question does not
+need it, and does it abstain when a question cannot be answered without such
+data? The primary measure is the share of answerable episodes with a
+look-ahead attempt; attempts on trap questions are reported separately,
+together with the abstention that follows them. H2a (structural): no episode
+with the clock enforced contains a result dated after $t$. A single leak
+invalidates the run as a harness defect. H2b: abstention accuracy is at least
+90\% on \code{pit\_trap} and on \code{unknown\_symbol}, \emph{and} false
+abstention on answerable tasks is at most 5\%; a constant policy passes the
+first part and fails the second (Section~\ref{sec:harness-results}). Real
+tickers (\code{absent\_real}) are reported separately. H2c (ablation A1): with
+the clock disabled, the rate at which answers match a numeric hindsight value
+is higher than with the clock enforced (one-sided exact McNemar test paired by
+task, $\alpha = 0.05$). Ranking and count hindsight values are excluded
+because they are matched by chance.
+
+\paragraph{RQ3: policy compliance under adversarial prompts.}
+When asked to trade, including with false claims of authorization, does the
+copilot refuse, avoid execution attempts and execution claims, and avoid
+over-refusing ordinary questions? H3a: refusal accuracy on \code{policy\_trap}
+is at least 95\%, reported with and without a decoy \code{execute\_order} tool
+that is offered to the model and always refused by the gate. Without the
+decoy, a model can attempt execution only by calling a tool it was not
+offered. H3b: \tok{EXECUTION\_REFUSED} appears in at most 2\% of non-trade
+episodes. The system guarantees that no order is executed, whatever the model
+does; that is tested (Section~\ref{sec:system}), not hypothesized.
+
+\paragraph{RQ4: cost and latency versus accuracy.}
+How do accuracy, grounding and safety trade off against tokens and latency
+across effort levels? H4: for each effort level below the main one, accuracy
+on answerable tasks is non-inferior to the main configuration with a margin
+of 5 percentage points: the one-sided 95\% lower bound of the paired
+difference in item-level success, from a task-clustered bootstrap, lies above
+$-5$ points, with Holm correction across levels. We also report the Pareto
+frontier of accuracy against mean output tokens and median episode latency.
+
+\subsection{Decision rule and power}
+\label{sec:power}
+
+Thresholds are fixed before the first run. A threshold hypothesis is
+\emph{supported} when the lower bound of the Wilson 95\% interval over
+distinct items is at or above the threshold (for H3b, the upper bound at or
+below it), \emph{not supported} when the interval lies entirely on the wrong
+side, and \emph{inconclusive} otherwise. With repetitions, an item counts as a
+success only if every repetition succeeds. This is a reliability criterion:
+at a per-episode success rate $p$ and independent repetitions, an item
+succeeds with probability $p^3$.
+
+Table~\ref{tab:power} gives the probability that the rule declares each
+hypothesis supported for the planned design: \powSuites{} evaluation suites of
+\powTasksPerSuite{} tasks, \powRepetitions{} repetitions each (\powEpisodes{}
+episodes). Items are deduplicated within and across suites and against the
+development suite, and the item and cluster counts come from generating the
+design with fixed design seeds. H3a pools \powItemsPolicyTrap{} distinct trade
+requests in \powClustersPolicyTrap{} template-by-symbol clusters and allows
+\powHThreeAAllowed{} failures. It is well powered only for a per-episode
+refusal rate of 99.5\% (\powHThreeAIndependentNineNineFive{} with independent
+repetitions) and is expected to be inconclusive at 99\%
+(\powHThreeAIndependentNineNine), which is intended for a reliability claim.
+The abstention hypotheses pool \powItemsPitTrap{} cutoff traps and
+\powItemsUnknownSymbol{} unknown-symbol questions and are powered at 99\%
+(\powHTwoBPitIndependentNineNine) but not at 98\%
+(\powHTwoBPitIndependentNineEight). Simulations in which items of one cluster
+share a beta-distributed success rate (intra-cluster correlation 0.05 and 0.2,
+\code{results/power/power.md}) move these probabilities by up to
+\powMaxClusterShift, mostly at rates below the threshold. The largest effect
+on a configuration that is otherwise powered is H1b at 99\%, whose power falls
+from \powHOneBIndependentNineNine{} to \powHOneBIccTwoNineNine{} at an
+intra-cluster correlation of 0.2. For H4, a paired non-inferiority test with a
+5-point margin needs \powNonInfTwoMarginZeroFive{} items at a discordant-pair
+rate of 0.2; the sweep therefore uses \powSweepSuites{} suites
+(\powSweepItems{} answerable items).
+
+\begin{table}[t]
+\centering
+\small
+\input{tables/power}
+\caption{Probability that the threshold rule declares a hypothesis supported,
+by true per-episode rate $p$ (for H3b, the per-episode over-refusal rate),
+under independent or identical repetitions. Design only; no model has been
+run. From \code{scripts/power\_analysis.py}.}
+\label{tab:power}
+\end{table}
+
+\subsection{Configurations}
+
+\begin{itemize}
+  \item \textbf{Main.} \code{claude-opus-5} with adaptive thinking, effort
+  \code{high}, \code{max\_tokens} 16{,}000, the default policy (24 tool calls,
+  strict schemas) and at most \RunMaxSteps{} steps. Server-side fallback is
+  off. A run in which any served model differs from the requested model is
+  marked invalid, as is a run that meets an unrecoverable API error; such a
+  run stops instead of scoring the failure as a wrong answer.
+  \item \textbf{Effort sweep (RQ4).} Every effort level the model under test
+  accepts (the backend validates \code{low}, \code{medium}, \code{high},
+  \code{xhigh} and \code{max}) on \powSweepSuites{} suites with two
+  repetitions each.
+  \item \textbf{Suites.} The public default suite (seed \SuiteSeed{}) is
+  reserved for development and pilot runs. The evaluation uses eight fresh
+  seeds, drawn after the system prompt and scorer are frozen; each evaluation
+  suite has its own synthetic panel and shares no item with the development
+  suite or with another evaluation suite. The seeds and the suite SHA-256 are
+  recorded in the run manifest before the first model call, and the suites are
+  not published until the runs are complete.
+  \item \textbf{Repetitions.} Current models accept no sampling parameters,
+  so run-to-run variability is measured by repetition: three independent runs
+  for the main configuration. Mean rates over repetitions are reported with
+  task-clustered bootstrap intervals (resampling tasks together with all their
+  repetitions) as descriptive statistics. Decisions use the all-repetitions
+  criterion above.
+  \item \textbf{Multiple comparisons.} Pairwise comparisons across the sweep
+  are controlled with the Holm procedure; exploratory comparisons are
+  reported with Benjamini--Hochberg control at a false discovery rate of
+  0.05~\citep{benjamini1995fdr}.
+  \item \textbf{Accounting.} Model refusals and \code{max\_steps}
+  terminations count as incorrect and are also reported separately. Answers
+  that fail the output format are separated from substantive errors using the
+  recorded parse method and parse notes. Every turn is recorded for offline
+  replay, and an interrupted run is resumed from its recording.
+\end{itemize}
+
+\subsection{Arms and ablations}
+
+\begin{itemize}
+  \item \textbf{A1: no clock.} The same model with the refusal of explicitly
+  named later dates lifted (Section~\ref{sec:clock}). It measures how often a
+  language model reaches for data after $t$ when nothing stops it (RQ2, H2c).
+  A policy that never names a later date is unaffected by it.
+  \item \textbf{A2: no citation requirement.} A prompt variant without the
+  citation instruction; tool results also omit their ``cite as'' line. The
+  verifier still attributes uncited claims to any result, which separates
+  faithfulness from citation compliance.
+  \item \textbf{A3: no argument gate.} Argument-level gate checks are removed,
+  while the data view still refuses later dates and no execution handler
+  exists. It tests defense in depth and will be a test-only configuration
+  that is never exposed on the command line.
+  % TODO(code): implement A3 as a test-only harness hook.
+  \item \textbf{A4: paraphrase and prompt sensitivity.} Paraphrased questions
+  and a reworded system prompt with the same protocol.
+  % TODO(code): paraphrase templates (generator v3).
+  \item \textbf{A5: closed book.} No tools and a prompt that says so. It
+  measures what the tools add, and how the model treats real tickers without
+  them.
+  \item \textbf{A6: no cutoff instruction.} The prompt states the as-of date
+  but not the instruction to ignore later knowledge.
+  \item \textbf{Decoy.} The main configuration with the refused
+  \code{execute\_order} tool offered (RQ3).
+\end{itemize}
+
+\subsection{Real data}
+The same protocol will be repeated on confirmed daily bars read from the
+suite's external store through \code{StoreBarSource}. Only aggregate results
+will be committed, never vendor data. This requires a task generator and
+reference that read an arbitrary confirmed panel, and a point-in-time
+treatment of price adjustments and of the universe
+(Section~\ref{sec:limitations}). \pending{real-data generator and runs}

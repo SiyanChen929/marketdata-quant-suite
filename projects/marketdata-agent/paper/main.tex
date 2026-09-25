@@ -1,0 +1,105 @@
+% Paper skeleton for the MarketData copilot study.
+%
+% STATUS: working draft. It reports harness-validation baselines on synthetic
+% data only. No language model has been evaluated; every LLM result is marked
+% \pending{...} or TODO(llm-results) and must stay that way until the runs in
+% sections/experiments.tex have been executed and committed under results/.
+% Every number in the text comes from tables/*.tex, which
+% scripts/render_paper_tables.py generates from results/benchmark/. Do not type
+% results by hand.
+%
+% Build: `make` (needs latexmk and a TeX distribution). `make tables` refreshes
+% the generated tables; `make check` verifies they match the committed results.
+
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\usepackage[hidelinks]{hyperref}
+
+\input{tables/macros}
+
+\newcommand{\pending}[1]{\textcolor{red!70!black}{\textbf{[Pending: #1]}}}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\tok}[1]{\texttt{#1}}
+
+\title{Point-in-Time Safety and Numeric Grounding for\\Tool-Using LLM Copilots over Market Data}
+% Anonymous for double-blind review. Do not add names or affiliations here.
+\author{Anonymous Author(s)}
+\date{Working draft (\today). Harness validation only; language-model results pending.}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Language-model copilots for quantitative research answer questions by calling
+data tools. Three failures are hard to see in the answer alone: using
+information dated after the analysis date (look-ahead), reporting numbers that
+no computation produced, and acting on a request to trade. We describe a
+governed copilot in which each of these is observable by construction. An
+as-of clock refuses, rather than clamps, requests for later dates; a policy
+gate cannot be configured to allow order execution and counts every attempt;
+eight strict-schema tools return results with content-addressed provenance
+identifiers; a rounding-aware verifier checks every numeric claim, including
+its sign and, for daily bars, its date and field, against the tool outputs it
+cites; and a hash-chained audit log is anchored in the committed run summary.
+We pair the system with a deterministic benchmark of \SuiteTasks{} distinct
+tasks over a synthetic daily panel, with cutoff traps worded like answerable
+questions, trade requests that claim prior approval, and fictional, real and
+not-yet-listed symbols. Ground truth comes from an independent reference
+implementation, and hindsight values identify answers built from future data.
+Scripted baselines check the instruments. They are not language models, and
+several of their results hold by construction. A reference plan scores
+\resOracleAccK/\resOracleAccN, also with the clock disabled. A policy built to
+ignore the cutoff names a later date in \resLookaheadNaiveLookaheadEpK{} of
+\SuiteTasks{} episodes, and every such read is refused and counted; with the
+clock disabled the same reads succeed, and \resNoGuardHindsightNumericK{} of
+\resNoGuardHindsightNumericN{} answers that carry a numeric hindsight value
+match it. The verifier accepts \resUngroundedGroundedK{} of
+\resUngroundedGroundedN{} claims from a policy that misreports real results in
+seven ways, and in a stress test it accepts \verRandomUncitedPercentTwoPct\% of
+random two-decimal percentages. A constant abstain-or-refuse policy is correct
+on every trap and abstains on every answerable task, so abstention is scored
+together with false abstention. Hypotheses and a power analysis for the
+language-model study are fixed in advance; that study is pending.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/system}
+\input{sections/benchmark}
+\input{sections/experiments}
+\input{sections/results}
+\input{sections/limitations}
+
+\section*{Reproducibility statement}
+The code, the task suite and every committed result are in the project
+repository. The suite is generated from seed \SuiteSeed{} (generator
+\code{\SuiteGenerator}, suite SHA-256 prefix \code{\SuiteShort}) over a
+synthetic panel from seed \DataSeed{}. The baseline results are produced by
+\code{scripts/run\_benchmark.py} offline, with Python \EnvPython{}, numpy \EnvNumpy{}, pandas
+\EnvPandas{} and package version \EnvPackage{}. Per-agent episode files and
+audit logs are byte-reproducible; the episode-file SHA-256 prefixes are
+\code{\resOracleEpisodesSha} (\code{oracle}), \code{\resLookaheadNaiveEpisodesSha}
+(\code{lookahead\_naive}), \code{\resUngroundedEpisodesSha} (\code{ungrounded}),
+\code{\resNoGuardEpisodesSha} (\code{no\_guard}) and
+\code{\resAbstainOrRefuseEpisodesSha} (\code{abstain\_or\_refuse}), and the
+oracle's audit head is \code{\resOracleAuditHead}. The verifier stress test
+(\code{scripts/verifier\_stress.py}) and the power analysis
+(\code{scripts/power\_analysis.py}) are deterministic. Language-model runs
+record every model turn for offline replay and resumption; none has been run
+yet.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

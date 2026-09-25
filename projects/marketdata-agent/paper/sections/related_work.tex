@@ -1,0 +1,52 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Tool-using agents and agent benchmarks.}
+ReAct interleaves reasoning traces with actions in an environment~\citep{yao2023react},
+and Toolformer trains a model to decide when to call external
+APIs~\citep{schick2023toolformer}. AgentBench evaluates language models as
+agents across interactive environments~\citep{liu2024agentbench}. Our setting
+is narrower. The environment is a governed market-data tool layer, and the
+quantities of interest are constraint violations (look-ahead requests,
+execution attempts) and claim-level faithfulness, not only task success.
+
+\paragraph{Financial question answering.}
+FinQA poses numerical reasoning questions over financial
+reports~\citep{chen2021finqa}, and FinanceBench evaluates question answering
+over company filings~\citep{islam2023financebench}. Both evaluate reasoning
+over documents that contain the needed evidence. Our benchmark differs in
+three ways. The evidence has to be
+obtained through tools. Each question carries an information cutoff, and some
+questions cannot be answered without violating it. Correctness is judged
+against an independent point-in-time reference.
+
+\paragraph{Language models in finance and look-ahead bias.}
+Domain-specific models such as BloombergGPT~\citep{wu2023bloomberggpt}, and
+studies of whether model outputs forecast returns~\citep{lopezlira2023chatgpt},
+raise the question of what the model knew at the time.
+\citet{glasserman2023lookahead} examine look-ahead bias in return predictions
+generated from GPT sentiment analysis. We address the tool channel: the
+harness guarantees that no tool result contains data after the cutoff, records
+every attempt to obtain it, and includes real tickers in the unknown-symbol
+category to expose answers from parametric memory.
+
+\paragraph{Hallucination and attribution.}
+\citet{ji2023hallucination} survey hallucination in natural language
+generation. Our grounding verifier is a narrow, auditable instance of
+attribution checking. It checks numeric claims only, against structured tool
+outputs, under an explicit rounding rule, and its heuristics and blind spots
+are documented and tested (Section~\ref{sec:grounding}).
+
+\paragraph{Evaluation discipline in quantitative research.}
+Empirical finance has long treated evaluation bias as a first-order concern:
+data snooping~\citep{white2000reality,hansen2005spa,romano2005stepwise},
+multiple testing in the cross-section of returns~\citep{harvey2016cross},
+selection-adjusted Sharpe ratios~\citep{bailey2014deflated} and the
+probability of backtest overfitting~\citep{bailey2017pbo}. Machine-learning
+methods for asset pricing~\citep{gu2020empirical} make these concerns more
+pressing. LLM-driven research agents that mine
+alphas~\citep{wang2023alphagpt,yu2023alphagen}, and program search with
+language models more broadly~\citep{romeraparedes2024funsearch}, add an agent
+that can itself introduce look-ahead or report unsupported numbers. The
+architecture here is a governance substrate for such agents, not a signal
+generator.

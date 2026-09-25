@@ -1,0 +1,501 @@
+{
+  "oracle_injections": {
+    "by_outputs": [
+      {
+        "ci95": [
+          0.012537297259704878,
+          0.018834484060332515
+        ],
+        "k": 91,
+        "mode": "random_uncited",
+        "n": 5920,
+        "outputs_in_episode": "1-5",
+        "rate": 0.015371621621621622
+      },
+      {
+        "ci95": [
+          0.0002942682008495647,
+          0.009379560476138811
+        ],
+        "k": 1,
+        "mode": "random_uncited",
+        "n": 600,
+        "outputs_in_episode": "21+",
+        "rate": 0.0016666666666666668
+      },
+      {
+        "ci95": [
+          0.01760250326687173,
+          0.030386899282651605
+        ],
+        "k": 50,
+        "mode": "random_uncited",
+        "n": 2160,
+        "outputs_in_episode": "6-20",
+        "rate": 0.023148148148148147
+      }
+    ],
+    "cells": [
+      {
+        "ci95": [
+          0.0,
+          0.1936076805344365
+        ],
+        "decimals": 0,
+        "k": 0,
+        "mode": "near_miss",
+        "n": 16,
+        "rate": 0.0,
+        "unit": "count"
+      },
+      {
+        "ci95": [
+          0.0016363608538834916,
+          0.05059345519366322
+        ],
+        "decimals": 2,
+        "k": 1,
+        "mode": "near_miss",
+        "n": 108,
+        "rate": 0.009259259259259259,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.09641862859446367
+        ],
+        "decimals": 3,
+        "k": 0,
+        "mode": "near_miss",
+        "n": 36,
+        "rate": 0.0,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.08029560375848066
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "near_miss",
+        "n": 44,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.11337365160907037,
+          0.22745253013169564
+        ],
+        "decimals": 0,
+        "k": 26,
+        "mode": "random_cited",
+        "n": 160,
+        "rate": 0.1625,
+        "unit": "count"
+      },
+      {
+        "ci95": [
+          0.021112985592705243,
+          0.036805019749269294
+        ],
+        "decimals": 0,
+        "k": 48,
+        "mode": "random_cited",
+        "n": 1720,
+        "rate": 0.027906976744186046,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.0031610904897272397,
+          0.010669333821452994
+        ],
+        "decimals": 1,
+        "k": 10,
+        "mode": "random_cited",
+        "n": 1720,
+        "rate": 0.005813953488372093,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.00010263792857149556,
+          0.0032859908753153514
+        ],
+        "decimals": 2,
+        "k": 1,
+        "mode": "random_cited",
+        "n": 1720,
+        "rate": 0.0005813953488372093,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.06601637497444598,
+          0.12593937148465367
+        ],
+        "decimals": 1,
+        "k": 33,
+        "mode": "random_cited",
+        "n": 360,
+        "rate": 0.09166666666666666,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.000490514392087504,
+          0.015564442180557707
+        ],
+        "decimals": 2,
+        "k": 1,
+        "mode": "random_cited",
+        "n": 360,
+        "rate": 0.002777777777777778,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.010558056888693507
+        ],
+        "decimals": 3,
+        "k": 0,
+        "mode": "random_cited",
+        "n": 360,
+        "rate": 0.0,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0013433502080644243,
+          0.01154081404755021
+        ],
+        "decimals": 0,
+        "k": 3,
+        "mode": "random_cited",
+        "n": 760,
+        "rate": 0.003947368421052632,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.00502913107992987
+        ],
+        "decimals": 1,
+        "k": 0,
+        "mode": "random_cited",
+        "n": 760,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.00502913107992987
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "random_cited",
+        "n": 760,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.11337365160907037,
+          0.22745253013169564
+        ],
+        "decimals": 0,
+        "k": 26,
+        "mode": "random_uncited",
+        "n": 160,
+        "rate": 0.1625,
+        "unit": "count"
+      },
+      {
+        "ci95": [
+          0.030274651540471785,
+          0.048526944816089525
+        ],
+        "decimals": 0,
+        "k": 66,
+        "mode": "random_uncited",
+        "n": 1720,
+        "rate": 0.03837209302325582,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.003995487307992572,
+          0.012155336004808417
+        ],
+        "decimals": 1,
+        "k": 12,
+        "mode": "random_uncited",
+        "n": 1720,
+        "rate": 0.0069767441860465115,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.00010263792857149556,
+          0.0032859908753153514
+        ],
+        "decimals": 2,
+        "k": 1,
+        "mode": "random_uncited",
+        "n": 1720,
+        "rate": 0.0005813953488372093,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.06601637497444598,
+          0.12593937148465367
+        ],
+        "decimals": 1,
+        "k": 33,
+        "mode": "random_uncited",
+        "n": 360,
+        "rate": 0.09166666666666666,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.000490514392087504,
+          0.015564442180557707
+        ],
+        "decimals": 2,
+        "k": 1,
+        "mode": "random_uncited",
+        "n": 360,
+        "rate": 0.002777777777777778,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.010558056888693507
+        ],
+        "decimals": 3,
+        "k": 0,
+        "mode": "random_uncited",
+        "n": 360,
+        "rate": 0.0,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0013433502080644243,
+          0.01154081404755021
+        ],
+        "decimals": 0,
+        "k": 3,
+        "mode": "random_uncited",
+        "n": 760,
+        "rate": 0.003947368421052632,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.00502913107992987
+        ],
+        "decimals": 1,
+        "k": 0,
+        "mode": "random_uncited",
+        "n": 760,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.00502913107992987
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "random_uncited",
+        "n": 760,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.0664135880908964
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "sign_flip",
+        "n": 54,
+        "rate": 0.0,
+        "unit": "percent"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.17587922364665765
+        ],
+        "decimals": 3,
+        "k": 0,
+        "mode": "sign_flip",
+        "n": 18,
+        "rate": 0.0,
+        "unit": "ratio"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.14865487460862087
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "wrong_field",
+        "n": 22,
+        "rate": 0.0,
+        "unit": "usd"
+      },
+      {
+        "ci95": [
+          0.0,
+          0.08762160119728664
+        ],
+        "decimals": 2,
+        "k": 0,
+        "mode": "wrong_row",
+        "n": 40,
+        "rate": 0.0,
+        "unit": "usd"
+      }
+    ],
+    "episodes_with_results": 150,
+    "samples_per_episode": 20
+  },
+  "suite_sha256": "57cd5cb0e19e9ab021e7abc577a5acc240cdb93e6df6b81aeaf6fce5e483ee24",
+  "ungrounded_by_mode": [
+    {
+      "accepted": 0,
+      "claims": 101,
+      "correct": 1,
+      "episodes": 57,
+      "episodes_with_results": 44,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.03664064639985608
+        ],
+        "k": 0,
+        "n": 101,
+        "rate": 0.0
+      },
+      "mode": "fabricated_citation"
+    },
+    {
+      "accepted": 0,
+      "claims": 51,
+      "correct": 0,
+      "episodes": 29,
+      "episodes_with_results": 29,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.07004661989853143
+        ],
+        "k": 0,
+        "n": 51,
+        "rate": 0.0
+      },
+      "mode": "misreported"
+    },
+    {
+      "accepted": 0,
+      "claims": 34,
+      "correct": 15,
+      "episodes": 17,
+      "episodes_with_results": 17,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.10151455415332376
+        ],
+        "k": 0,
+        "n": 34,
+        "rate": 0.0
+      },
+      "mode": "near_miss"
+    },
+    {
+      "accepted": 0,
+      "claims": 24,
+      "correct": 0,
+      "episodes": 12,
+      "episodes_with_results": 12,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.13797620467498017
+        ],
+        "k": 0,
+        "n": 24,
+        "rate": 0.0
+      },
+      "mode": "sign_flip"
+    },
+    {
+      "accepted": 0,
+      "claims": 88,
+      "correct": 3,
+      "episodes": 52,
+      "episodes_with_results": 41,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.0418270666648922
+        ],
+        "k": 0,
+        "n": 88,
+        "rate": 0.0
+      },
+      "mode": "uncited"
+    },
+    {
+      "accepted": 0,
+      "claims": 12,
+      "correct": 0,
+      "episodes": 6,
+      "episodes_with_results": 6,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.24249400665524085
+        ],
+        "k": 0,
+        "n": 12,
+        "rate": 0.0
+      },
+      "mode": "wrong_field"
+    },
+    {
+      "accepted": 0,
+      "claims": 2,
+      "correct": 0,
+      "episodes": 1,
+      "episodes_with_results": 1,
+      "false_acceptance": {
+        "ci95": [
+          0.0,
+          0.6576197724933469
+        ],
+        "k": 0,
+        "n": 2,
+        "rate": 0.0
+      },
+      "mode": "wrong_row"
+    }
+  ]
+}

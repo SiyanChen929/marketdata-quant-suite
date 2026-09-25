@@ -1,0 +1,22 @@
+# Episode transcripts, audit logs, and benchmark run directories are generated
+# artifacts. Commit summaries as JSON/Markdown under results/ instead.
+runs/
+audit/
+*.audit.jsonl
+episodes/
+
+# Local credentials never enter Git (the SDK reads ANTHROPIC_API_KEY from the environment).
+.env
+.env.*
+
+# LaTeX build products. `make -C paper` writes them to paper/build/; the rest
+# cover a direct pdflatex run inside paper/.
+paper/build/
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz

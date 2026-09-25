@@ -1,0 +1,79 @@
+\section{Limitations and threats to validity}
+\label{sec:limitations}
+
+\paragraph{Synthetic data.} The panel is a one-factor lognormal model on a
+weekday calendar with no holidays, and there are no intraday, fundamental or
+news inputs. Synthetic data make ground truth exact and rule out memorized
+prices, but they establish the harness and the discipline of the agent, not
+financial insight. The research governance of the repository treats
+synthetic results as evidence of end-to-end plumbing only.
+
+\paragraph{Point-in-time values on real data.} The as-of guarantee is by row
+date. The suite's gateway stores split- and dividend-adjusted bars as of
+ingestion, so on real data a bar dated before the cutoff can embed corporate
+actions after it, and a universe built from symbols ingested later omits
+delistings (survivorship). The clock cannot detect either. Real-data runs
+require unadjusted bars with point-in-time adjustment factors, or the
+adjustment basis and ingestion date recorded in provenance, and a
+delisting-inclusive universe; neither exists yet.
+
+\paragraph{Verifier heuristics.} The verifier does not extract numbers written
+in words. It marks a correctly derived number that no tool reported, such as
+the difference of two returns, as unsupported. It treats four-digit unsigned
+integers from 1900 to 2100 as years. Binding covers bar fields, dates and
+range ends of daily-bar results only, so matching is otherwise
+statistic-agnostic within a result: a simple return can match the log return
+of the same result. Coarsely rounded claims and small counts can match an
+unrelated output by chance (Table~\ref{tab:injections}). Attribution is
+heuristic when one sentence cites several results. Each limit is covered by a
+test, and the planned human annotation (H1c) measures how much they matter for
+real model answers.
+
+\paragraph{Scoring.} Abstentions and refusals must be the bare token on the
+answer line, which counts a correct but verbose answer line as a format
+failure (it is flagged separately). The execution-claim detector is a
+heuristic that has not been validated on annotated answers.
+
+\paragraph{Template questions and protocol dependence.} Questions come from
+templates, and scoring depends on the \code{ANSWER:} line and two tokens.
+Results may not transfer to free-form questions. Format failures are
+separated from substantive errors through the recorded parse method and
+notes, and paraphrase robustness is ablation A4.
+
+\paragraph{Contamination.} The generator and the default suite are public.
+Fresh evaluation seeds and panels, drawn after the prompt is frozen and
+published only after the runs, limit the risk that evaluation items enter
+training data, and evaluation items exclude every development item. The real
+tickers in \code{unknown\_symbol} deliberately probe answers from parametric
+memory.
+
+\paragraph{Prompt, model and provider scope.} There is one main system prompt
+version, and model behaviour can change between model versions or serving
+configurations. Fallback is off, the served model is recorded for every call
+and a mismatch invalidates a run, and repetitions measure run-to-run
+variability. Only Claude backends are implemented, so the study's claims are
+limited to the Claude models evaluated.
+
+\paragraph{Scripted ablation.} The \code{no\_guard} result shows the
+mechanism with a scripted policy, and several baseline results hold by
+construction. How often a language model reaches for future data without the
+clock is an empirical question (A1).
+
+\paragraph{Statistics.} Claim-level intervals treat claims as independent,
+which overstates precision, so episode-level rates are reported too. Items
+within a template-and-symbol cluster are correlated; the power analysis
+models this, and descriptive intervals resample clusters. The committed
+baselines come from one dataset and one seed.
+
+\paragraph{Scope of the safety claims.} The guarantees hold for the code as
+tested: no tool result contains rows dated after the cutoff, no execution path
+exists, and edits to the audit log are detectable against the head recorded
+in the committed summary. They do not defend against an operator who modifies
+the code or rewrites both the log and its anchor, and they do not make the
+model's reasoning correct. Instructions planted in tool outputs are not
+filtered. They cannot unlock execution or future data, because the gate does
+not read model or tool text, but they can still mislead the model within its
+permitted actions.
+
+\paragraph{Broader impact.} The system is research software. It places no
+orders, and nothing in this paper is investment advice.

@@ -1,0 +1,326 @@
+\section{System}
+\label{sec:system}
+
+Figure~\ref{fig:architecture} shows the architecture. The package is
+\code{marketdata\_agent}, and module names below refer to it. A single design
+rule runs through it: a constraint is enforced at a point that \emph{records}
+the violation, and nothing is silently repaired.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize,
+              inner sep=3pt, minimum height=10mm, text width=25mm},
+  arr/.style={-{Stealth[length=1.8mm]}, semithick},
+  lab/.style={font=\scriptsize, fill=white, inner sep=1pt},
+]
+\node[box] (q)     at (0,0)     {Question and\\as-of date $t$};
+\node[box] (loop)  at (4,0)   {Copilot loop};
+\node[box] (llm)   at (4,2.2) {LLM backend\\(Claude, scripted, replay)};
+\node[box] (gate)  at (8,0)     {Policy gate and\\as-of clock};
+\node[box] (tools) at (12,0)  {Eight strict tools};
+\node[box] (audit) at (0,-2.4)  {Hash-chained audit log, anchored head};
+\node[box] (ver)   at (4,-2.4) {Grounding verifier};
+\node[box] (prov)  at (8,-2.4)  {Provenance:\\\code{[r:id]}, \code{data\_sha256}};
+\node[box] (pit)   at (12,-2.4) {Point-in-time view:\\confirmed bars $\le t$};
+\node[box] (gw)    at (12,-4.8) {\code{quant\_marketdata}\\gateway};
+\draw[arr] (q) -- (loop);
+\draw[arr] ([xshift=-4mm]loop.north) -- node[lab, left=1mm] {history} ([xshift=-4mm]llm.south);
+\draw[arr] ([xshift=4mm]llm.south) -- node[lab, right=1mm] {turn} ([xshift=4mm]loop.north);
+\draw[arr] ([yshift=2mm]loop.east) -- node[lab, above=1mm] {\code{tool\_use}} ([yshift=2mm]gate.west);
+\draw[arr] ([yshift=-2mm]gate.west) -- node[lab, below=1mm] {denial} ([yshift=-2mm]loop.east);
+\draw[arr] (gate) -- node[lab, above=1mm] {allowed} (tools);
+\draw[arr] (tools) -- (pit);
+\draw[arr] (pit) -- (gw);
+\draw[arr] (tools.south west) -- (prov.north east);
+\draw[arr] (prov.north west) -- node[lab] {result} (loop.south east);
+\draw[arr] (loop) -- node[lab] {answer} (ver);
+\draw[arr] (ver) -- (audit);
+\draw[arr, dashed] (loop.south west) -- (audit.north east);
+\end{tikzpicture}
+\caption{Architecture. Every tool call passes the policy gate before any
+handler runs; denials return to the model as \code{is\_error} results. Tools
+read only through the point-in-time view over the shared gateway. Results carry
+provenance identifiers that answers cite, and the verifier checks cited
+numbers. Every model call, gate decision, tool attempt, order proposal and final
+answer is appended to the audit log (dashed).}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Data access and the as-of clock}
+\label{sec:clock}
+
+All prices enter through the suite's shared gateway, \code{quant\_marketdata}.
+Two sources implement a \code{BarSource} protocol. \code{StoreBarSource} calls
+\code{MarketDataStore.read\_bars} with \code{finality="confirmed"} hard-wired;
+it has no code path to provisional staging. \code{FrameBarSource} serves an
+in-memory canonical frame for synthetic data and tests. It validates the frame
+with the gateway's \code{normalize\_bars}, requires explicit \code{source} and
+\code{finality} columns, and rejects any row that is not confirmed.
+
+Tools never touch a source. They read through \code{PointInTimeBars}, which
+holds an immutable \code{AsOfClock}. An episode with as-of date $t$ operates
+after the close of session $t$: confirmed bars dated $\le t$ are knowable, and
+nothing later is. A request whose start or end is after $t$ raises
+\code{LookaheadViolation}. It is \emph{refused, not clamped}, so the attempt
+stays observable. The view also re-validates every frame a source returns: the
+canonical schema, confirmed finality, rows within the requested dates, and
+only the requested symbols. A violation raises a contract error instead of
+being repaired. The literal \code{"latest"} resolves to the last confirmed
+session on or before $t$. The universe at $t$ contains only symbols with a
+confirmed bar on or before $t$, so the existence of a later listing is not
+revealed. Proposed orders may execute no earlier than the session after $t$.
+
+The guarantee is about the \emph{date} of each row, not about when its values
+became known. The suite's gateway requests split- and dividend-adjusted bars,
+so on real data a bar dated $\le t$ can embed corporate actions after $t$, and
+a universe of symbols ingested later omits delistings. The synthetic panel of
+this paper has neither problem; real-data runs need a point-in-time
+adjustment basis first (Section~\ref{sec:limitations}).
+
+\paragraph{The no-clock ablation.} For ablation A1 the view carries a second
+date, the refusal cutoff, which is $t$ normally and 9999-12-31 in the
+ablation. Only explicitly named dates (and symbols) are checked against it.
+Everything derived implicitly still refers to $t$: \code{"latest"}, the
+universe, proposal reference prices, the result headers and the system prompt.
+A call that names a later date is served but still counted as a look-ahead
+attempt. A policy that never names a later date therefore behaves identically
+with and without the clock, which the reference policy confirms
+(Section~\ref{sec:harness-results}).
+
+\subsection{Policy and gate}
+\label{sec:gate}
+
+A frozen \code{Policy} bounds each episode. By default it allows 24 tool
+calls, 8 symbols per call, a date span of 3{,}660 days, windows of 2 to 756
+returns, 20 rows per result and 10{,}000 shares per proposal. Two controls are
+recorded but cannot be weakened. Constructing a policy with
+\code{forbid\_provisional=False} or \code{forbid\_order\_execution=False}, or
+one whose allow-list contains an execution tool name, raises
+\code{PolicyConfigError}.
+
+\code{PolicyGate.check} evaluates each call in a fixed order. Every check
+counts against the call budget, including denied calls. The order is:
+(i) execution, meaning the name is one of eight reserved execution names
+(\code{execute\_order}, \code{submit\_order}, \code{place\_order},
+\code{send\_order}, \code{execute\_trade}, \code{place\_trade},
+\code{submit\_trade}, \code{cancel\_order}) or the tool is registered with
+kind \code{execution}; (ii) budget; (iii) unknown tool; (iv) allow-list;
+(v) the input is a JSON object; (vi) strict schema validation; and (vii)
+argument roles. Execution comes first, so an attempt to call an unregistered
+\code{execute\_order}, or any execution tool after the budget is spent, is
+counted as an execution attempt; a call denied for the budget still records
+its other violations, so a late look-ahead attempt is counted too. Argument
+roles are declared per tool. A \code{finality} argument must be
+\code{confirmed}. Start and end dates are validated against the clock, and an
+end may be \code{"latest"}. Windows and quantities must be in range. The gate
+then checks the number of distinct symbols, $\text{start} \le \text{end}$, and
+the date span. All argument-level violations are collected, so a call that is
+both too wide and after the cutoff still counts as a look-ahead attempt. The
+first violation becomes the decision code. For RQ3 the benchmark can register
+a decoy \code{execute\_order} of kind \code{execution}; it is offered to the
+model like any tool and refused like any execution tool, and its handler would
+refuse as well.
+
+A denied call returns a tool result with \code{is\_error: true} and the text
+\code{[error:<code>] <message>. No data was returned for this call.}, which the
+model can read and recover from. Handler failures are contained in the same
+way: typed tool errors keep their codes, gateway contract errors become
+\code{data\_contract\_error}, and any other exception becomes
+\code{internal\_error}.
+
+\subsection{Tools}
+\label{sec:tools}
+
+Eight tools are registered in a fixed order. Each has a JSON schema with
+\code{additionalProperties: false}, every property required, and
+\code{strict: true}, and the descriptions state the policy limits that apply.
+\begin{itemize}
+  \item \code{list\_symbols}: the universe known at $t$, with per-symbol coverage.
+  \item \code{get\_daily\_bars}: summary statistics over a range, plus at most
+  20 of the most recent rows, flagged \code{truncated} when more exist.
+  \item \code{period\_return}: from the close of the first session on or after
+  the start to the close of the last session on or before the end.
+  \item \code{realized\_volatility}: the sample standard deviation
+  ($n-1$ denominator) of the last $w$ daily log returns, times $\sqrt{252}$.
+  \item \code{rolling\_correlation}: Pearson correlation of the last $w$ daily
+  log returns, over dates on which both symbols have a close.
+  \item \code{max\_drawdown}: $\min_\tau \big(P_\tau / \max_{s \le \tau} P_s\big) - 1$,
+  with peak, trough and recovery dates.
+  \item \code{compare\_returns}: 2 to 8 symbols ranked by period return.
+  \item \code{propose\_order}: records a proposal (Section~\ref{sec:proposals}).
+\end{itemize}
+
+\subsection{Provenance}
+\label{sec:provenance}
+
+Every successful result carries a \code{Provenance} record built from exactly
+the rows the handler used. \code{data\_sha256} follows a bit-exact encoding
+(\code{bars-sha256/v1}). Rows are sorted by (symbol, date). Dates are hashed as
+little-endian int64 nanoseconds and prices and volumes as little-endian IEEE-754
+float64, so the digest does not depend on float formatting or library
+versions. The result identifier is the first 12 hexadecimal characters of the
+SHA-256 of the canonical JSON (sorted keys, compact, ASCII, no NaN) of the
+tool name, the canonical arguments, $t$ and \code{data\_sha256}. Identical
+requests against identical data therefore receive identical identifiers across
+runs. Numeric outputs are rounded to 10 significant digits. The model sees a
+header \code{[r:<id>] <tool> | as\_of=<t> | finality=confirmed | rows=<n> |
+data\_sha256=<prefix>}, the JSON payload, and an instruction to cite the result
+as \code{[r:<id>]}. Source labels stay in the provenance and are not shown to
+the model.
+
+\subsection{Order proposals}
+\label{sec:proposals}
+
+\code{propose\_order} is the only trading-related action. It records an
+\code{OrderProposal} with status \code{pending\_human\_approval},
+\code{requires\_human\_confirmation=true} and \code{executed=false}. The
+reference price is the last confirmed close on or before $t$, and the proposal
+states that execution could occur no earlier than the session after $t$. The
+proposal book is append-only and has no execute or submit method. The package
+contains no broker client.
+
+\subsection{Agent loop}
+\label{sec:loop}
+
+\code{Copilot.run} drives any backend that implements a one-step
+\code{LLMBackend} protocol. It is a manual loop because gating, auditing,
+replay and backend-neutral scoring all need control of each step.
+\begin{enumerate}
+  \item Log an \code{episode\_start} manifest: $t$, the SHA-256 of the policy
+  and of the tool definitions, the data snapshot identifier, the backend
+  configuration, and the system-prompt version with the SHA-256 of its
+  template and of the rendered text.
+  \item Call the backend. Log the requested model, the served model, the stop
+  reason, usage, the request id and latency. On \code{refusal} the episode
+  ends without reading content. Otherwise the full assistant content,
+  including thinking blocks, is appended to the history unchanged.
+  \item Run every \code{tool\_use} block through the gate and the handler, and
+  return all \code{tool\_result} blocks for the turn in a single user message.
+  \item On \code{max\_tokens}, answer the turn's tool calls with
+  \code{output\_truncated} errors without running them, since their input may
+  be partial, and ask the model to continue.
+  \item Stop at the first turn without tool calls (status \code{completed}) or
+  after \RunMaxSteps{} model calls (status \code{max\_steps}).
+  \item Verify the grounding of the answer (Section~\ref{sec:grounding}) and
+  log \code{final\_answer}.
+\end{enumerate}
+One tool runtime, and therefore one call budget and one as-of view, is created
+per episode. The system prompt (\code{\RunPrompt}) states the cutoff and asks
+the model not to use later knowledge. It requires a first line
+\code{ANSWER: <value>}, the token \tok{INSUFFICIENT\_DATA} when data after the
+cutoff or unavailable data would be needed, the token \tok{EXECUTION\_REFUSED}
+for trade requests, and a citation \code{[r:<id>]} after every number.
+
+\paragraph{Claude backend.}
+\code{AnthropicBackend} sends one Messages API request per step, with the
+model (default \code{claude-opus-5}), \code{max\_tokens} (default 16{,}000),
+the system prompt, the history, the tools, adaptive thinking and an effort
+level (default \code{high}). It sends no sampling parameters, no forced tool
+choice and no assistant prefill. Above the SDK's non-streaming output limit
+the same request is streamed and the final message is read. A
+\code{pause\_turn} stop is continued up to four times and the segments are
+concatenated. SDK errors are classified from the most specific type to the
+least. Server-side model fallback can change the model that answers, so it is
+an explicit flag. It is off by default for benchmark runs, and the served
+model of every segment is recorded, with refusal details and fallback
+events.
+
+\paragraph{Record and replay.}
+\code{RecordingBackend} appends each turn to a JSONL file, keyed by the
+SHA-256 of the canonical request: the backend configuration, the system
+prompt, the full history and the tool definitions. A request already in the
+recording is served from it, so a retried episode or a resumed run pays only
+for turns it has not recorded; a recording is loaded, never truncated.
+\code{ReplayBackend} serves recorded turns for identical requests and raises
+an error on any miss. Tool results are deterministic functions of the data and
+arguments, so a recorded language-model run can be re-scored offline, or under
+a revised scorer.
+
+\subsection{Audit log}
+\label{sec:audit}
+
+Each audit record is one line of canonical JSON with the fields \code{seq},
+\code{ts}, \code{kind}, \code{episode\_id}, \code{payload}, \code{prev\_hash}
+and \code{record\_hash}. The record hash is the SHA-256 of the record without
+that field. The previous hash links to the preceding record, and the first
+record links to 64 zeros. Verification checks the schema, the sequence
+number, the link, the record hash, the canonical serialization and a trailing
+newline. It therefore detects edited, deleted, inserted and reordered records,
+and a partial final write. Removing records from the end of the file, or
+rewriting the whole file with a recomputed chain, can only be detected against
+an anchor stored elsewhere: the record count and head hash, which the runner
+checks before writing any summary and records in the committed
+\code{summary.json}. Scripted runs stamp records with a fixed time, so
+rerunning them regenerates each log byte for byte and a regenerated log must
+match the committed head. Opening an existing log verifies it first and
+refuses to append to a broken chain. Keys that name
+credentials are redacted, and so are API-key patterns and the current values
+of credential environment variables.
+
+\subsection{Grounding verifier}
+\label{sec:grounding}
+
+The verifier checks the numeric claims of an answer $A$ against the results
+$R$ of its episode. Each result $r \in R$ has a set of numeric outputs $O_r$.
+
+\paragraph{Claims.} Numbers are extracted as signed decimals, with thousands
+separators, a leading \$, the units \%, \emph{percent}, \emph{pct},
+percentage points, \emph{bp}, \emph{basis points} and multiples, and magnitude
+suffixes (\emph{k}, \emph{M}, \emph{bn}, \emph{million}, \ldots). Unicode minus
+signs and dashes are signs, and an unsigned number takes a verbal sign from an
+adjacent cue such as ``down'', ``fell'' or ``a gain of''. The following are
+excluded, and the reason is recorded: dates in ISO, slash and month-name
+forms; clock times; years (four-digit unsigned integers from 1900 to 2100);
+window lengths (an integer followed by a horizon noun, or preceded by
+\emph{window}, \emph{lookback} or \emph{horizon}); function parameters such as
+\code{vol(20)}; identifiers such as \code{SYN01}, \code{Q2} or \code{t+1};
+ordinals and list markers; the constant in $\sqrt{252}$; numbers restated from
+the question; and everything inside citation tags. A decimal glued to an
+unknown suffix, or an implausibly long digit run, is an \emph{unparsed} claim
+that counts and is never supported. Each remaining number is a claim $c$, with
+value $v_c$, $d_c$ decimals shown, unit $u_c$, magnitude multiplier $m_c$, and
+a flag $\sigma_c$ for an explicit or verbal sign.
+
+\paragraph{Attribution.} Adjacent \code{[r:\dots]} tags form one citation
+group. A claim is attributed to the first group after it in the same sentence.
+If there is none, it is attributed to the nearest group before it in that
+sentence; otherwise it is uncited. Sentences end at a newline or at a period,
+exclamation or question mark followed by whitespace.
+
+\paragraph{Rounding-aware match.} Let $S(\%) = S(\mathrm{pp}) = \{100\}$,
+$S(\mathrm{bp}) = \{10^4\}$, $S(\$) = S(\times) = \{1\}$ and
+$S(\text{plain}) = \{1, 100\}$, since tool outputs are fractions and models
+often drop the percent sign. A claim $c$ matches an output $o$ if, for some
+$s \in S(u_c)$,
+\begin{equation}
+  |x - v_c| \le \tfrac{1}{2}\,10^{-d_c}\,m_c + 10^{-9}\max(1, |v_c|),
+  \qquad x = s\,o,
+  \label{eq:match}
+\end{equation}
+and the signs agree: a signed claim must have the sign of $s\,o$, and an
+unsigned claim matches only a non-negative $s\,o$, except for the maximum
+drawdown, where $x = |s\,o|$ because ``a drawdown of 18.20\%'' is
+conventional. The claim is then a correct rounding of the output under any tie
+rule.
+
+\paragraph{Binding.} Daily-bar results hold several fields and rows, so their
+outputs are bound to the text. A row value such as the close of 2023-06-29
+supports a claim only if that date appears in the claim's sentence or in the
+question. A value with a bar field (open, high, low, close, volume, and the
+range summaries) supports a claim only if the sentence, or else the question,
+names no bar field or names that field. The first and last close of a range
+are out of scope when the text speaks only of the other end. A claim that
+matches only an out-of-scope output, or only an output of the opposite sign,
+is unsupported and carries a note saying why.
+
+\paragraph{Verdicts and rates.} An uncited claim is \emph{supported} if it
+matches an output of any result in the episode. A cited claim is supported
+only if it matches an output of a cited result that exists in the episode. A
+claim whose group cites only identifiers absent from the episode is an
+\emph{unknown citation} and counts as unsupported. The grounding rate is the
+share of claims that are supported, and the citation rate is the share that
+are cited. An episode is \emph{fully grounded} if it makes at least one claim
+and all its claims are supported. The verifier checks faithfulness to tool
+outputs, not whether the right quantity was computed. Section~\ref{sec:results}
+shows a baseline that is fully grounded and still wrong.
