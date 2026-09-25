@@ -1,0 +1,11 @@
+# LaTeX build products (the manuscript is rebuilt from source with `make`).
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+main.pdf

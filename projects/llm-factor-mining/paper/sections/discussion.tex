@@ -1,0 +1,88 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{What the protocol buys.} The design choices trade statistical
+power for credibility.
+\begin{itemize}
+  \item \emph{Counting every trial.} Invalid proposals, evaluation failures
+    and degenerate trials enter the family size, and so does unused budget.
+    This penalizes proposers that generate many bad candidates or stop
+    early, which is exactly the behaviour that inflates apparent discovery
+    rates in automated search.
+  \item \emph{Counting each hypothesis once.} Trials with identical per-date
+    ranks are one hypothesis. Syntactic deduplication alone would let a
+    proposer inflate its discoveries by re-spelling a good expression.
+  \item \emph{Confirming on unseen data.} A proposer that learns from
+    formation feedback makes formation p-values optimistic; the null markets
+    of Section~\ref{sec:results-synthetic} show it for genetic programming.
+    Only the validation step, on data no proposer has seen, carries
+    false-discovery control.
+  \item \emph{The information barrier.} The harness passes proposers
+    formation statistics only, and on store data later windows are not
+    loaded until their phase. For an LLM, whose only input is the rendered
+    prompt, this means the model cannot condition on validation or test
+    outcomes of \emph{this} study. It does not remove what the model may
+    have learned about the period in pre-training; that is what the
+    contamination diagnostics address.
+  \item \emph{The commit-then-reveal hold-out.} The ledger and the study
+    registry give tamper evidence for one's own records: every commitment,
+    reveal and refusal is chained, and repeated reveals are counted. They do
+    not by themselves prove to a third party that no earlier reveal or
+    discarded run exists, because the same process writes them. That proof
+    needs the commitment hash published outside the repository, for example
+    in a pushed signed tag or a public timestamp, before the separate reveal
+    step, which the command-line interface enforces for real data.
+\end{itemize}
+The controls are designed to apply equally to every proposer, but they are
+not neutral in effect: equal trial budgets are not equal compute, which is
+why the design includes a compute-matched baseline arm. They make results
+harder to obtain and easier to believe.
+
+\paragraph{Reading the synthetic results.} The harness results are a
+statement about the \emph{baselines} and the protocol. At a budget of
+\SynBudget{} trials, undirected random search and feedback-driven genetic
+programming both reach the textbook planted signals at the higher
+signal-to-noise level, and both miss the library-family and the drawn
+signals, which are in their search space. The selected factors are true
+discoveries by the benchmark's ground truth, but mostly re-expressions of
+library factors. The benchmark thus has room to show an advantage from
+better proposals, and a test of whether an advantage is more than prior
+knowledge.
+
+Such an advantage would only be informative under three conditions:
+\begin{enumerate}
+  \item it appears on the drawn signal, not only on the textbook and
+    library-family ones that an LLM may know from the literature;
+  \item it survives the same multiple-testing accounting and confirmation;
+  \item it replicates across the pre-registered seeds (H2) and holds against
+    compute-matched baselines.
+\end{enumerate}
+
+\paragraph{What would count as evidence for LLM-guided search.} By the
+pre-registered rules, a positive answer to RQ1 requires three things:
+\begin{itemize}
+  \item a sealed-test improvement over both baselines at an equal budget, on
+    both the market-sampling and the search-variability estimands (H1);
+  \item an equivalence result showing that the improvement does not shrink
+    after the model's training cutoff relative to genetic programming (H3);
+  \item ideally, confirmation on a prospective window that did not exist
+    when the factor set was committed.
+\end{itemize}
+An improvement confined to factors with low behavioural novelty would count
+as rediscovery, not discovery. \todo{Discuss the actual outcome of H1 to H4
+once the pre-registered runs exist.}
+
+\paragraph{Rationales are claims, not evidence.} The LLM proposer attaches an
+economic rationale and a mechanism label to every expression. These texts
+are recorded but play no role in selection. Fluent but unsupported
+explanations are a known failure mode of language
+models~\citep{ji2023hallucination}. Whether rationales carry information
+about out-of-sample survival is itself an empirical question for the
+rationale ablation. \todo{Report whether rationale presence or content
+predicts test survival.}
+
+\paragraph{Scope and use.} This is research software. It places no orders
+and makes no claim that any discovered factor would remain profitable after
+costs, capacity limits or publication. Market prices in the real-data study
+come only from a commercial data provider (MarketData) through the suite's
+gateway, and no vendor data are redistributed.

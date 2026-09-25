@@ -1,0 +1,468 @@
+\section{Method}
+\label{sec:method}
+
+This section describes the protocol as implemented in the accompanying
+package, version~0.2.0. Symbols in \code{typewriter} font name the
+corresponding code objects.
+
+\subsection{Data and notation}
+\label{sec:data}
+
+A \emph{panel} holds daily bars for trading sessions $t=1,\dots,T$ and assets
+$i=1,\dots,N$: open $O_{t,i}$, high $H_{t,i}$, low $L_{t,i}$, close $C_{t,i}$
+and volume $V_{t,i}$. The panel accepts only bars whose finality is
+\code{confirmed}. For US equities these are read from the suite's shared
+store through its market-data gateway; the synthetic benchmark generates bars
+in the same canonical schema. Every panel carries a SHA-256 content hash over
+its dates, symbols, sources and values. When built from the store, it also
+carries the store manifest hash captured at read time.
+
+\subsection{The factor language}
+\label{sec:dsl}
+
+\paragraph{Syntax.} Expressions are parsed by a hand-written recursive-descent
+parser. User text is never evaluated as code. The grammar is
+\begin{align*}
+\mathit{expr} &::= \mathit{term}\ \big((\texttt{+}\mid\texttt{-})\ \mathit{term}\big)^{*} &
+\mathit{term} &::= \mathit{unary}\ \big((\texttt{*}\mid\texttt{/})\ \mathit{unary}\big)^{*}\\
+\mathit{unary} &::= \texttt{-}\,\mathit{unary} \mid \mathit{primary} &
+\mathit{primary} &::= \mathit{number} \mid \mathit{name} \mid \mathit{name}\texttt{(}\mathit{expr}(\texttt{,}\,\mathit{expr})^{*}\texttt{)} \mid \texttt{(}\mathit{expr}\texttt{)}
+\end{align*}
+Infix operators desugar to \code{add}, \code{sub}, \code{mul} and
+\code{div}. Unary minus desugars to \code{neg}, or to a negative literal when
+applied to a number.
+
+\paragraph{Terminals.} There are eight terminals:
+\begin{itemize}
+  \item the five bar fields \code{open}, \code{high}, \code{low},
+    \code{close} and \code{volume};
+  \item \code{returns} $=C_{t}/C_{t-1}-1$, undefined when $|C_{t-1}|<10^{-12}$;
+  \item \code{vwap\_proxy} $=(H_t+L_t+C_t)/3$, since daily bars carry no true VWAP;
+  \item \code{dollar\_volume} $=C_tV_t$.
+\end{itemize}
+Forward returns are \emph{not} a terminal. They exist only inside the
+evaluation metrics, after the execution lag.
+
+\paragraph{Operators.} The language has 27 operators in three classes
+(Table~\ref{tab:operators}). Time-series windows $d$ must be integer
+literals: $d\ge 1$ for the shifts \code{delay} and \code{delta}, and
+$d\ge 2$ for rolling operators. Rolling operators use only full windows, so a
+window touching a missing observation is undefined. Cross-sectional operators
+read one date at a time. Non-finite intermediate values are set to missing,
+and the final factor is masked to cells with a confirmed bar.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Operators of the factor language. $x,y$ are series, $d$ an integer
+window literal and $c$ a numeric literal. Signed transforms preserve the sign
+of their argument.}
+\label{tab:operators}
+\begin{tabular}{lp{0.68\textwidth}}
+\toprule
+Class & Operators and semantics \\
+\midrule
+Element-wise (10) & \code{add}, \code{sub}, \code{mul}; \code{div} (undefined where $|y|<10^{-12}$); \code{neg}, \code{abs}, \code{sign}; signed \code{log} $=\sign(x)\log(1+|x|)$; signed \code{sqrt}; signed \code{power}$(x,c)=\sign(x)|x|^{c}$ with $c\in[-4,4]$ \\
+Shifts (2) & \code{delay}$(x,d)=x_{t-d}$; \code{delta}$(x,d)=x_t-x_{t-d}$ \\
+Rolling (12) & \code{ts\_mean}, \code{ts\_sum}, \code{ts\_min}, \code{ts\_max}; \code{ts\_std} (ddof $1$); \code{ts\_rank} (average-tie percentile rank of $x_t$ among the last $d$ values); \code{ts\_zscore}; \code{ts\_argmax}/\code{ts\_argmin} (sessions since the window extremum, ties to the most recent); \code{decay\_linear} (weights $d,d-1,\dots,1$ from today backwards, normalized by $d(d+1)/2$); \code{ts\_corr}, \code{ts\_cov} (on jointly observed values, ddof $1$; degenerate windows undefined) \\
+Cross-sectional (3) & \code{cs\_rank} (per-date percentile rank), \code{cs\_zscore} (ddof $1$), \code{cs\_demean} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Static validation.} A validator checks the following and returns
+every violation as a machine-readable code, which is fed back to proposers:
+\begin{itemize}
+  \item operator names, arities and argument kinds;
+  \item window and parameter ranges;
+  \item depth at most 10 (a leaf has depth $1$);
+  \item at most 48 nodes;
+  \item windows at most 252 sessions;
+  \item literals $|c|\le 10^{6}$;
+  \item cumulative lookback at most 504 sessions;
+  \item at least one data terminal.
+\end{itemize}
+The \emph{lookback} of an expression is defined recursively. It is $1$ for
+\code{returns}, $0$ for the other terminals and for literals, and for an
+operator $f$ with window $d$ applied to arguments $x_j$ it is
+\[
+\lambda\big(f(x_1,\dots;d)\big)=\max_j \lambda(x_j)+\omega_f(d),
+\]
+where $\omega_f(d)=d-1$ for rolling operators, $\omega_f(d)=d$ for shifts and
+$\omega_f=0$ otherwise.
+
+\paragraph{Causality.} Every operator reads the current row and a bounded
+number of earlier rows of its inputs, or a single date across assets.
+Structural induction therefore gives the following property: for any valid
+expression $e$, the value $e_{t,i}$ is a function of bars dated at or before
+$t$ only. The test suite checks this property empirically. It perturbs all
+bars after a date $\tau$ and verifies that no factor value at or before
+$\tau$ changes, for every operator, every terminal, nested composites and the
+reference library.
+
+\paragraph{Canonical form, hashing and complexity.} The canonical form sorts
+the two series arguments of the commutative operators (\code{add},
+\code{mul}, \code{ts\_corr}, \code{ts\_cov}) by their canonical strings, and
+writes literals in non-window slots as floats. The structural hash is the
+SHA-256 of a namespaced canonical string. It is the deduplication key and
+the evaluator's cache key. Syntax alone cannot identify equivalent
+hypotheses: $(a+b)+c$ and $a+(b+c)$ hash differently, and so do
+\code{volume}, \code{log(volume)} and \code{cs\_rank(volume)}, whose
+per-date ranks are identical. Equivalence for multiple testing is therefore
+decided on behaviour (Section~\ref{sec:protocol}). The complexity of an
+expression is
+$\kappa(e)=n_{\mathrm{op}}+n_{\mathrm{term}}+\tfrac12 n_{\mathrm{lit}}$.
+
+\subsection{Evaluation timing and metrics}
+\label{sec:metrics}
+
+\paragraph{Execution lag.} A signal $f_{t,i}$ observed at the close of $t$ is
+traded at the close of $t+\ell$ and held for $h$ sessions. The forward
+return is
+\[
+y^{(h)}_{t,i}=\frac{C_{t+\ell+h,i}}{C_{t+\ell,i}}-1,\qquad \ell\ge 1,
+\]
+and $\ell\ge1$ is enforced in code. All metric series are indexed by the
+signal date $t$. We use $\ell=h=1$ throughout.
+
+\paragraph{Windows and embargo.} The calendar is split chronologically by
+session counts into formation, validation and test windows. The default
+fractions are $0.6/0.2/0.2$ of the sessions left after two embargo gaps. The
+windows are separated by $E\ge\ell+h_{\max}$ sessions that belong to no
+window. Within a window $W$ with last session position $p_W$, only signal
+positions with $p+\ell+h\le p_W$ are scored, so no forward return ends
+outside its window. Because factors are causal, each phase computes a factor
+on the panel it is allowed to see and then restricts the result to the
+window's scored dates. The value on any date is the same whichever panel was
+used, so there is no recomputation effect at window boundaries.
+
+\paragraph{Information coefficient.} The per-date rank IC is the Pearson
+correlation of average-tie ranks of $f_{t,\cdot}$ and $y_{t,\cdot}$ over
+assets where both are observed. It is undefined on dates with fewer than
+$10$ such assets or no rank variation. For the IC series on a window's
+scored dates:
+\begin{itemize}
+  \item $\overline{\IC}$ is the mean;
+  \item $\ICIR=\overline{\IC}/\mathrm{sd}(\IC)$ is per period, not
+    annualized;
+  \item $t_{\mathrm{NW}}=\overline{\IC}/\widehat{\mathrm{se}}_{\mathrm{NW}}$
+    uses the Newey--West standard error with a Bartlett
+    kernel~\citep{newey1987hac} and $q=\max\{h-1,\lfloor 4(n/100)^{2/9}\rfloor\}$
+    lags, where $n$ is the number of IC dates.
+\end{itemize}
+p-values refer $t_{\mathrm{NW}}$ to a $t$ distribution with $n-1$ degrees of
+freedom, a conservative small-sample convention.
+
+\paragraph{Portfolio metrics.} On each date, assets are split into five
+equal-count buckets by signal. The long-short portfolio holds $+1$ spread
+equally over the top bucket and $-1$ over the bottom bucket. With $h>1$, the
+weights held are the average of the last $h$ formations. Weights held on
+signal date $t$ earn the close-to-close return from $t+\ell$ to $t+\ell+1$.
+Trading costs are $10$ basis points per unit of $\sum_i|w_{t,i}-w_{t-1,i}|$.
+Sharpe ratios are annualized with $\sqrt{252}$. Top-bucket turnover is the
+share of today's top-bucket names that were not in yesterday's top bucket.
+
+\subsection{Search, selection and the sealed hold-out}
+\label{sec:protocol}
+
+\paragraph{Phase 1: search.} The search loop evaluates proposals on a panel
+truncated at the end of the formation window, so every statistic a proposer
+can receive is computed from formation data. The harness can also be given a
+loader instead of a panel; each phase then reads only its own data, and the
+test window is loaded only after the factor set is frozen. The store path of
+the command-line interface works this way. Each round proceeds as follows.
+\begin{enumerate}
+  \item The proposer receives a context (described below) and returns a batch
+    of $b=20$ expressions, or the remaining budget if smaller.
+  \item Each expression is validated. An invalid expression becomes a
+    \emph{trial} with its error codes. If its whitespace- and
+    case-normalized text repeats an earlier invalid text, it is logged as a
+    duplicate instead.
+  \item A valid expression is canonicalized. If its hash was seen before, it
+    is logged as a duplicate and consumes no budget. Otherwise it is
+    evaluated on the formation window and becomes a trial. A numerical
+    failure is also a trial, with status \code{error}.
+  \item An evaluated trial whose IC is defined on fewer than
+    $\max(\SynMinIcDates, \lceil \SynMinIcFraction\, n_{\mathrm{scorable}}\rceil)$
+    formation dates is \emph{degenerate}: it is a trial with $p=1$, and the
+    proposer is told so. Without this rule, and with a normal reference, a
+    factor with three defined IC dates can obtain an arbitrarily small
+    p-value.
+\end{enumerate}
+The loop stops for any of these reasons:
+\begin{itemize}
+  \item the budget of $B$ trials is reached;
+  \item 100 rounds have run;
+  \item 5 consecutive rounds produced no new trial;
+  \item 3 consecutive proposer failures occurred (for example, refusals).
+\end{itemize}
+Proposer failures are logged and do not count as trials. Only a run that
+reaches its budget is \emph{complete}. A run that ends with repeated proposer
+failures, or with no trial at all, is \emph{aborted}: it is logged but
+neither committed nor revealed. Misconfiguration (a rejected request, key,
+permission or model identifier) is not a proposer failure; it stops the run
+with an error, so it cannot pass for a null result.
+
+\paragraph{Information barrier.} The barrier is an interface: it limits what
+the harness passes to the proposer. It is not a sandbox; in-process code
+could read anything in memory. For the LLM arm, only the rendered prompt
+leaves the process. The context type is frozen and slotted. Its feedback
+fields accept only two exact types, and subclasses are rejected:
+\begin{itemize}
+  \item evaluated feedback: canonical text, formation IC, ICIR,
+    $t_{\mathrm{NW}}$, top-bucket turnover and complexity. The only factory
+    that builds it from a metrics report refuses any window not named
+    \code{formation};
+  \item rejected feedback: raw text, error codes and message, truncated to
+    400 characters (invalid, failed and degenerate trials).
+\end{itemize}
+Each round's context contains:
+\begin{itemize}
+  \item the grammar card and the active limits;
+  \item the 8 trials with the highest $|\ICIR|$;
+  \item the 4 with the lowest, once more than 8 exist;
+  \item the previous round's evaluations (the LLM prompt shows at most 10);
+  \item the last 8 rejections;
+  \item the trial count and the remaining budget.
+\end{itemize}
+It contains no dates, asset identifiers, sample sizes, or validation or test
+quantities. An end-to-end test perturbs all post-formation bars and confirms
+that every context a proposer receives is unchanged.
+
+\paragraph{Phase 2: selection.} Selection loads a panel truncated at the end
+of the validation window.
+\begin{enumerate}
+  \item \emph{Behavioural classes.} Two evaluated trials whose per-date
+    cross-sectional ranks on the formation IC dates agree up to sign have
+    identical rank-IC series against any forward return, so they test one
+    hypothesis. Each such class is represented by its first trial. Counting
+    the copies separately would make Benjamini--Hochberg \emph{less} strict,
+    because a step-up rule rewards clusters of equal p-values.
+  \item \emph{Formation screen.} The Benjamini--Hochberg step-up
+    procedure~\citep{benjamini1995fdr} at $q=\SynFdrAlpha$ is applied to the
+    two-sided formation p-values of the class representatives, with family
+    size $m=\max(B,n_{\mathrm{trials}})-n_{\mathrm{dup}}$: every budgeted
+    slot that did not repeat a tested hypothesis counts, degenerate, invalid
+    and failed trials and unused budget as $p=1$, so a run that stops early
+    faces the family of a full one. A feedback-driven proposer chooses its
+    next expressions after seeing formation results, so these p-values are
+    not valid for false-discovery control. The screen is a filter only.
+    The implementation also offers
+    Benjamini--Yekutieli~\citep{benjamini2001fdr} and Holm's step-down
+    procedure. \todo{add a citation for Holm's procedure once its metadata
+    has been verified.}
+  \item \emph{Orientation and confirmation.} Each survivor $j$ is multiplied
+    by $s_j=-1$ if its formation IC is negative and $s_j=+1$ otherwise, and
+    scored on the validation window, which no proposer has seen.
+    Benjamini--Hochberg at $q=\SynConfirmAlpha$ is applied to the one-sided
+    validation p-values of all survivors, with $m$ equal to the number of
+    survivors; a survivor that is degenerate on validation gets $p=1$. This
+    is the step whose error control carries the claim: given the candidate
+    set, which depends on formation data only, the validation p-values are
+    valid.
+  \item \emph{Decorrelation.} Confirmed candidates are taken in descending
+    order of validation ICIR, with ties broken by hash. A candidate is kept
+    if the mean over validation dates of its cross-sectional Spearman
+    correlation with every kept factor is below $0.7$ in absolute value. At
+    most $k=5$ factors are kept.
+\end{enumerate}
+For each survivor we also record the deflated Sharpe
+ratio~\citep{bailey2014deflated} of its formation ICIR as a
+\emph{diagnostic}; it is not used for selection. Survivors are selected on
+$|\ICIR|$, a two-sided choice: under a symmetric null the maximum of $N$
+absolute values behaves like the maximum of $2N$ signed ones, so the null
+threshold uses $2N$ trials,
+\[
+\widehat{SR}_0=\sqrt{V}\Big[(1-\gamma)\,\Phi^{-1}\!\big(1-\tfrac1{2N}\big)+\gamma\,\Phi^{-1}\!\big(1-\tfrac{1}{2Ne}\big)\Big],
+\]
+where $V$ is the sample variance of the class representatives' formation
+ICIRs, $N$ the screen's family size and $\gamma$ the Euler--Mascheroni
+constant. The diagnostic is then
+\[
+\mathrm{DSR}=\Phi\!\left(\frac{(\widehat{SR}-\widehat{SR}_0)\sqrt{n-1}}{\sqrt{1-g_3\widehat{SR}+\tfrac{g_4-1}{4}\widehat{SR}^2}}\right),
+\]
+with $\widehat{SR}=|\ICIR|$, and $g_3$, $g_4$ the skewness (sign-adjusted by
+$s_j$) and non-excess kurtosis of the IC series. Treating trials as
+independent makes this diagnostic approximate.
+
+\paragraph{Phase 3: commit and reveal.} The selected set $F$ is an ordered
+tuple of canonical expressions, hashes and orientations. The seal
+identifier is $\sigma=H(\text{terms})$, where $H$ is SHA-256 over canonical
+JSON and the terms are the test window, the panel content hash, the metric
+configuration and the language limits. The commitment
+$c=H(\sigma,\text{terms},F,H(F))$ is appended to the ledger before any test
+metric exists. The one-commit, one-reveal rule is keyed on a \emph{guard}
+$g=H(\text{data hash},\text{test-window dates})$ only, so changing the metric
+settings or the limits yields a new $\sigma$ but not a second reveal of the
+same window. The ledger is re-read on every commit and reveal, so several
+instances, or several writers of one ledger file, share the rule. A commit is
+refused if the guard already holds a commitment or a reveal, or if the data
+hash recomputed from the panel's values differs from the one it was built
+with. A reveal recomputes the commitment for the set it is given and refuses
+in four cases:
+\begin{itemize}
+  \item nothing has been committed;
+  \item a reveal for $g$ already exists in the ledger;
+  \item the set or the seal terms differ from the committed ones;
+  \item an external authority refuses it (below).
+\end{itemize}
+The last three refusals are written to the ledger. On a successful reveal,
+test metrics are computed for each factor and for the composite. The
+composite is the equal-weight, missing-aware mean of per-date z-scored
+oriented signals.
+
+\paragraph{Study registry.} Across runs, a project-wide register fixes each
+real-data \emph{study} (symbols, dates, split and a pre-registered maximum
+number of reveals) before anything is evaluated, counts every exploratory
+evaluation outside a search, records commitments and caps reveals. On store
+data the search only commits; revealing is a separate command that requires
+the commitment hash, which is meant to be published outside the repository
+first, and the registry's permission. The registry, like the ledger, is
+self-attested: it makes repeated reveals countable, not impossible.
+
+\paragraph{Trial ledger.} The ledger is an append-only JSON Lines file. Record
+$k$ stores
+\[
+h_k=H(\text{version},k,\text{kind}_k,\tau_k,\text{payload}_k,h_{k-1}),\qquad h_{-1}=0^{64},
+\]
+where $\tau_k$ is an optional timestamp. Canonical JSON uses sorted keys and
+rejects NaN. The ledger records the run configuration, every trial,
+duplicate, proposer error and round, the selection with all candidates and
+decisions, the commitment, the reveal and the run end. Any edit, insertion,
+deletion or reordering breaks the chain. Truncating the tail is detected by
+comparing against a separately stored head hash. These checks detect
+accidental or naive edits only: the head is written by the same process,
+into the same directory, so anyone with write access can drop records and
+rebuild the chain. A head or commitment hash proves something to a third
+party only once it has been published elsewhere before the reveal.
+
+\subsection{Proposers}
+\label{sec:proposers}
+
+\paragraph{Random grammar (A).} This baseline samples typed trees i.i.d. and
+ignores all feedback.
+\begin{itemize}
+  \item Maximum depth is 4.
+  \item A series slot below the root becomes a leaf with probability $0.35$.
+  \item The second argument of an arithmetic operator becomes a literal from
+    $\{0.5,1,2\}$ with probability $0.15$.
+  \item Windows are drawn from $\{1,2,3,5,10,20,40,60\}$ (shifts may use
+    $1$; rolling operators need at least $2$) and exponents from
+    $\{0.5,2\}$. The sampling probability of any tree is computable, which
+    lets a test confirm that every planted benchmark signal is in the
+    sampler's support.
+  \item Sampling repeats until the tree is valid. It is then redrawn, up to
+    50 times, if it repeats one of the proposer's earlier samples.
+\end{itemize}
+
+\paragraph{Genetic programming (B).} This baseline follows the classic
+setup~\citep{koza1992genetic}. It keeps an archive of evaluated trees with
+fitness $|\ICIR_{\mathrm{formation}}|-0.002\,\kappa$; the sign is free
+because selection orients factors. Each round:
+\begin{itemize}
+  \item the 30 fittest archive members form the population;
+  \item children are bred by tournament selection (size 3) and one of three
+    operations: subtree crossover ($p=0.5$), subtree mutation ($0.3$, with
+    new subtrees of depth at most 3) or point mutation ($0.2$), which swaps
+    an operator for another of the same signature, a terminal, or a window;
+  \item a tenth of each batch is random immigrants.
+\end{itemize}
+Children must be valid and new. These settings were fixed before any
+experiment and were not tuned on results.
+
+\paragraph{LLM-guided (D).} The prompts are two versioned templates, a system
+prompt and a user prompt (version~2), whose SHA-256 hashes are recorded with
+every call and every proposal. Version~2 dropped the example mechanism labels
+of version~1, which named the stories behind two planted benchmark signals.
+The system prompt states four things:
+\begin{itemize}
+  \item the data are anonymized;
+  \item the model should not try to infer the market or period;
+  \item signs are free;
+  \item short, economically motivated expressions are preferred.
+\end{itemize}
+The user prompt carries the grammar card, the formation feedback blocks
+(best, worst and previous round), the recent rejections and the remaining
+budget. The response must match a JSON schema with exactly the fields
+\code{expression}, \code{rationale} and \code{economic\_mechanism} per
+proposal, and no additional properties.
+
+Before sending, the harness-written text of every prompt (templates and
+grammar card) is checked for:
+\begin{itemize}
+  \item ISO-style dates;
+  \item month names (full names in any case; ``March'', ``May'' and
+    abbreviations when capitalized);
+  \item four-digit year-like numbers, excluding the integer counters;
+  \item any whole-word occurrence of the panel's symbols.
+\end{itemize}
+A violation aborts the run. Model-written text echoed back in the rejection
+block is checked for the same patterns (except years) and redacted rather
+than aborting the run, since it is the model's own output.
+
+The Claude backend sends the following:
+\begin{itemize}
+  \item the model identifier (default \code{claude-opus-5}) and a maximum of
+    16{,}000 output tokens;
+  \item adaptive thinking;
+  \item an effort level (default \code{high}) and the JSON-schema output
+    format.
+\end{itemize}
+It sends no sampling parameters and no prefilled assistant turn. Responses
+are handled as follows:
+\begin{itemize}
+  \item a refusal stop reason is checked before content is read;
+  \item rate limits, overload and server errors, and connection failures are
+    retried with bounded exponential backoff;
+  \item a rejected request, key, permission or model identifier (HTTP 400,
+    401, 403, 404, 413 or 422) stops the run;
+  \item truncation at the token limit, invalid JSON and failures that
+    survived the retries raise recoverable proposer errors;
+  \item paused turns are resumed up to three times.
+\end{itemize}
+The served model identifier, stop reason, token usage and request
+identifier are recorded for every call. Server-side model fallback can
+silently change the model under test, so it is an explicit option that is
+off in all experiments. A recording layer appends every request and its
+outcome to a write-only JSON Lines file, in call order and failures included.
+It is keyed by the hash of the request, including a replicate tag and a tag
+for the benchmark cell, and of the backend identity. A replay backend
+answers the $n$-th occurrence of a request with the $n$-th recorded outcome
+and treats anything unrecorded as fatal, so a replayed run follows the live
+run's path exactly; a test checks this for a live run that met a transient
+failure.
+
+\subsection{Contamination diagnostics}
+\label{sec:contamination}
+
+\paragraph{Knowledge-cutoff split.} Given a per-date IC series and a cutoff
+session $c$ from the model provider's documentation, the split works as
+follows:
+\begin{itemize}
+  \item \emph{pre} uses signal positions with $p+\ell+h<c$;
+  \item \emph{post} uses positions with $p\ge c$;
+  \item signal dates whose forward return straddles the cutoff are dropped.
+\end{itemize}
+The difference in mean IC is standardized by
+$\sqrt{\widehat{\mathrm{se}}_{\mathrm{pre}}^2+\widehat{\mathrm{se}}_{\mathrm{post}}^2}$,
+with Newey--West standard errors. Section~\ref{sec:setup} uses this split in
+a difference-in-differences design against a baseline. No cutoff date is
+assumed anywhere in the code.
+
+\paragraph{Novelty.} Rediscovery is measured on values. The
+\emph{behavioural novelty} of a factor $f$ against the reference library
+$\mathcal{L}$ is
+\[
+1-\max_{\ell\in\mathcal{L}}\Big|\frac{1}{|T|}\sum_{t\in T}\rho_S\big(f_{t,\cdot},\ell_{t,\cdot}\big)\Big|,
+\]
+the largest mean cross-sectional Spearman correlation with any library
+entry over the formation IC dates $T$. A re-spelling of a classic factor,
+such as \code{-ts\_sum(returns, 5)} for five-day reversal, scores near
+$0$. \emph{Structural novelty}, reported as a secondary description of
+syntax, is $1-\max_{\ell}|S(e)\cap S(\ell)|/|S(e)\cup S(\ell)|$ with $S(e)$ the
+set of structural hashes of $e$'s operator and terminal subtrees; it cannot
+tell a re-spelled classic factor from new structure. The library has 18
+entries covering momentum, reversal, volatility, liquidity and volume-price
+interaction. Three are translations of published formulas of
+\citet{kakushadze2016alphas} (Alphas \#2, \#6 and \#13); four more are
+the project's own variants in that style.

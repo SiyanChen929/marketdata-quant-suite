@@ -1,0 +1,5 @@
+# Generated experiment runs and LLM response caches never enter Git.
+runs/
+cache/
+cache/**/*.jsonl
+*.egg-info/

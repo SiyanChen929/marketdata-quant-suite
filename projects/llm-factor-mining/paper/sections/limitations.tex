@@ -1,0 +1,99 @@
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{Evidence status.} The only completed experiment is the synthetic
+harness validation, with \SynSeeds{} seeds per planted cell, \SynNullSeeds{}
+null markets and two baselines. No LLM experiment and no real-market
+evaluation has been run. All claims about LLM-guided search in this draft are
+hypotheses. The benchmark's planted signals and hypothesis H2 were revised
+after the first baseline harness runs had been seen (Section~\ref{sec:setup}
+and the research plan disclose this); the confirmatory seeds exclude the
+seeds already seen.
+
+\paragraph{Synthetic benchmark design.} The authors chose the following, and
+rankings on this benchmark need not transfer to real markets:
+\begin{itemize}
+  \item the data-generating process, the textbook and library-family planted
+    signals, the drawing procedure of the drawn signal, the SNR levels and
+    the genetic-programming settings;
+  \item recovery depends on a correlation threshold of
+    \SynRecoveryThreshold{} and the true FDP on a threshold of
+    \SynTrueDiscoveryThreshold{};
+  \item recall uses every \SynRecallStride{}th formation date for speed.
+\end{itemize}
+Returns and volumes are independent apart from the planted terms. The
+volume process is not calibrated to any market, and there are no
+listings, delistings or missing data. The validation and test windows are
+short, so power at the lower signal-to-noise level is low.
+
+\paragraph{Statistical simplifications.}
+\begin{itemize}
+  \item p-values refer the Newey--West $t$-statistic to a $t$ distribution
+    with $n-1$ degrees of freedom, a convention rather than an exact
+    small-sample result.
+  \item The deflated Sharpe ratio is a diagnostic that treats trials as
+    independent, with $2N$ trials for the two-sided selection on $|\ICIR|$.
+  \item Benjamini--Hochberg control is valid under
+    independence~\citep{benjamini1995fdr} or positive regression
+    dependence~\citep{benjamini2001fdr}. Behavioural deduplication merges
+    only trials with identical per-date ranks; highly correlated variants
+    remain separate hypotheses, and for a step-up procedure such clusters
+    make the screen less strict. The Benjamini--Yekutieli variant is
+    therefore reported as well.
+  \item Formation p-values of feedback-driven proposers are not valid for
+    false-discovery control; the protocol relies on the validation
+    confirmation for its error control.
+  \item Bootstrap data-snooping tests~\citep{white2000reality,hansen2005spa,romano2005stepwise},
+    and the block bootstrap that the pre-registered H1 and H3 use, are not
+    yet implemented.
+\end{itemize}
+
+\paragraph{Protocol gaps and trust assumptions.}
+\begin{itemize}
+  \item The trial ledger and the study registry are self-attested. They
+    detect accidental or naive edits and make repeated reveals countable;
+    they rely on commitment hashes being published outside the repository
+    before a reveal.
+  \item The information barrier is an interface, not a sandbox. In-process
+    code could read anything in memory, and for synthetic data the full
+    panel is in memory.
+  \item The classic-library baseline, the compute-matched baseline and the
+    ablation wrappers are not implemented or not yet run.
+\end{itemize}
+
+\paragraph{Contamination controls are partial.}
+\begin{itemize}
+  \item Anonymization removes dates, tickers and sample sizes from prompts,
+    and a render-time check guards the harness-written text. The check is
+    heuristic: feedback statistics are not checked for year-like numbers,
+    distributional fingerprints of a period cannot be detected, and generic
+    knowledge of documented anomalies cannot be removed.
+  \item The knowledge-cutoff split depends on the provider's documentation
+    of the training-data cutoff and on enough post-cutoff sessions for
+    power.
+  \item Only a prospective window is out of sample for the model by
+    construction.
+\end{itemize}
+
+\paragraph{Real-data threats.}
+\begin{itemize}
+  \item Without point-in-time index membership or delisted histories, the
+    universes may be affected by survivorship bias.
+  \item Close-to-close returns include or omit dividends depending on the
+    provider's adjustments.
+  \item \code{vwap\_proxy} is a typical price, not a traded VWAP.
+  \item The long-short evaluation uses a flat cost of 10 basis points per
+    unit of turnover. It ignores borrow costs, market impact and capacity,
+    and it trades at vendor closes rather than official auction prints.
+\end{itemize}
+
+\paragraph{LLM-specific issues.}
+\begin{itemize}
+  \item Current models accept no sampling parameters, so replicates vary in
+    ways we record but do not control.
+  \item Recorded outcomes make each run exactly replayable, and record files
+    are write-only, so a new live run is always a new sample.
+  \item Served model identifiers are logged, and server-side fallback is
+    disabled, because it could otherwise change the model under study
+    silently.
+\end{itemize}

@@ -1,0 +1,65 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Formulaic alphas and automated search.}
+\citet{kakushadze2016alphas} documents 101 formulaic alphas built from a small
+vocabulary of time-series and cross-sectional operators over daily price and
+volume data. The factor language in this paper uses a vocabulary of that kind,
+and our reference library contains three of its formulas (translated into
+the language) and further entries written in that spirit. Searching
+over expression trees is the classic setting for genetic
+programming~\citep{koza1992genetic}, which serves as our main non-LLM
+baseline. \citet{yu2023alphagen} use reinforcement learning to generate
+collections of formulaic alphas that work well together. \citet{wang2023alphagpt}
+describe an interactive system in which an LLM helps a human analyst mine
+alphas. Our study keeps the search space and budget fixed and changes only
+the proposer, so that differences between methods can be attributed to the
+proposer rather than to the evaluation.
+
+\paragraph{Machine learning in empirical asset pricing.}
+\citet{gu2020empirical} compare machine-learning methods for predicting the
+cross-section of returns and find gains from flexible models. Our object is
+different. We search over short, human-readable programs whose number of
+trials can be counted exactly, so that selection effects can be controlled
+formally.
+
+\paragraph{LLM-guided program search.}
+\citet{romeraparedes2024funsearch} pair an LLM with a programmatic evaluator
+and obtain verifiable mathematical discoveries. In finance the evaluator is
+itself noisy and the data cannot be regenerated. This moves the burden of
+proof from the proposer to the protocol: multiple-testing control and
+out-of-sample discipline.
+
+\paragraph{Multiple testing and data snooping.}
+We control the false discovery rate with the step-up procedure of
+\citet{benjamini1995fdr}. The step-up procedure of \citet{benjamini2001fdr}
+serves as a robustness check under arbitrary dependence. Selection-adjusted
+Sharpe-type statistics follow the deflated Sharpe ratio
+of~\citet{bailey2014deflated}. \citet{harvey2016cross} document the scale of
+the multiple-testing problem in the factor literature, and
+\citet{bailey2017pbo} formalize the probability of backtest overfitting. The
+bootstrap Reality Check of \citet{white2000reality} and the superior
+predictive ability test of \citet{hansen2005spa} test whether the best of
+many strategies beats a benchmark. The step-down procedure of
+\citet{romano2005stepwise} identifies which strategies do so while
+controlling the family-wise error rate. We list these tests as planned
+extensions, because they need the full trial ledger that our protocol
+records. Inference on mean information
+coefficients uses heteroskedasticity- and autocorrelation-consistent standard
+errors~\citep{newey1987hac}.
+
+\paragraph{Language models, finance and look-ahead.}
+\citet{lopezlira2023chatgpt} study whether ChatGPT's reading of news headlines
+predicts stock returns. \citet{glasserman2023lookahead} assess look-ahead bias
+in GPT-based return predictions. Domain-specific models such as
+BloombergGPT~\citep{wu2023bloomberggpt} are trained on large corpora of
+financial text. This shows that published financial evidence can enter
+pre-training. LLMs are also known to produce fluent but unsupported
+content~\citep{ji2023hallucination}, so we treat the economic rationales
+attached to proposals as model claims, not as evidence. Our contamination
+diagnostics address look-ahead in three ways:
+\begin{itemize}
+  \item anonymized prompts;
+  \item a pre- versus post-cutoff comparison against a baseline;
+  \item value-based (behavioural) novelty against a library of known factors.
+\end{itemize}

@@ -1,0 +1,176 @@
+\section{Results}
+\label{sec:results}
+
+% Every number in this section comes from tables/*.tex, which
+% scripts/render_paper_tables.py generates from
+% results/synthetic_benchmark/summary.json. Do not type numbers by hand.
+% LLM and real-data subsections stay as \todo placeholders until the
+% pre-registered runs exist.
+
+\subsection{Harness validation on synthetic data}
+\label{sec:results-synthetic}
+
+\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\small
+\textbf{Synthetic data --- not evidence about real markets.} This experiment
+validates the search harness on simulated prices with known planted signals
+and on null markets with none. Only the two baselines were run; the LLM arm
+was not run.}}
+\medskip
+
+Table~\ref{tab:synthetic-headline} reports the headline metrics of the
+\SynRuns{} planted runs (2 proposers $\times$ 2 SNR levels $\times$
+\SynSeeds{} market seeds), Table~\ref{tab:synthetic-recovery} breaks recovery
+down by planted signal, Table~\ref{tab:synthetic-null} reports the
+\SynNullRuns{} null runs, and Table~\ref{tab:synthetic-oracle} gives the
+planted signals' own test-window performance as a ceiling. Every run used
+its full budget of \SynBudget{} trials (\SynIncompleteRuns{} incomplete
+runs).
+
+\begin{table}[t]
+\centering
+\caption{Synthetic planted-alpha benchmark, planted markets (mean $\pm$ sd
+across complete runs; \SynBudget{} trials per run). Recovery, recall and the
+number selected average all runs; the remaining columns describe selected
+factors and average only the runs that selected something, so a value
+without $\pm$ comes from one run. Composite = equal-weight z-scored
+combination of the selected factors on the \SynTestIcDates{}-date sealed
+test window. Synthetic data only.}
+\label{tab:synthetic-headline}
+\resizebox{\textwidth}{!}{\input{tables/synthetic_headline}}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Recovery of each planted signal: runs in which a \emph{selected}
+factor matched it on the test window ($\bar\rho\ge\SynRecoveryThreshold$),
+and runs in which \emph{any evaluated trial} matched it on the formation
+window ($|\bar\rho|\ge\SynRecoveryThreshold$). Synthetic data only.}
+\label{tab:synthetic-recovery}
+\resizebox{\textwidth}{!}{\input{tables/synthetic_recovery}}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Null markets (SNR $0$, \SynNullSeeds{} seeds): runs that selected
+at least one factor, and the selection funnel (mean $\pm$ sd across runs).
+Every factor selected here would be a false discovery. Synthetic data only.}
+\label{tab:synthetic-null}
+\resizebox{\textwidth}{!}{\input{tables/synthetic_null}}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Oracle reference: test-window mean IC (Newey--West $t$) of the planted
+signals and of their equal-weight composite, per planted market, and the
+share of planted signals that pass BH at \SynTestAlpha{} on the test window
+(power). Synthetic data only.}
+\label{tab:synthetic-oracle}
+\resizebox{\textwidth}{!}{\input{tables/synthetic_oracle}}
+\end{table}
+
+We draw five observations from the tables. With \SynSeeds{} seeds per planted
+cell and \SynNullSeeds{} null seeds, we read them as descriptions of the
+harness and the baselines, not as statistical claims.
+
+\paragraph{The confirmation step, not the formation screen, controls false
+selections.} On the null markets neither arm selected a factor
+(\SynNullSelecting{evolutionary} runs for GP and \SynNullSelecting{random}
+for random search). The formation screen alone was not safe for the
+feedback-driven arm: it passed \SynNullMeanSd{evolutionary}{n_screen_survivors}
+expressions per null run for GP against
+\SynNullMeanSd{random}{n_screen_survivors} for random search, and none of
+them was confirmed on validation. GP chooses its next expressions after
+seeing formation results, so its formation p-values are biased toward
+significance. This is why the protocol treats the formation screen as a
+filter and places the claim-carrying multiplicity step on data no proposer
+has seen.
+
+\paragraph{The protocol has little power at the low signal-to-noise level.}
+At SNR \SynSnrLow{}, GP selected \SynMeanSd{0.05}{evolutionary}{n_selected}
+factors per run and random search \SynMeanSd{0.05}{random}{n_selected}; the
+share of runs that selected anything was
+\SynMean{0.05}{evolutionary}{any_selected} and
+\SynMean{0.05}{random}{any_selected}. The confirmation step confirmed
+\SynMean{0.05}{evolutionary}{n_confirmed} and
+\SynMean{0.05}{random}{n_confirmed} candidates on average, out of
+\SynMean{0.05}{evolutionary}{n_screen_survivors} and
+\SynMean{0.05}{random}{n_screen_survivors} screen survivors. The planted
+composite itself is clearly detectable on the test window at this level
+(Table~\ref{tab:synthetic-oracle}), but the individual planted signals are
+weaker, and the validation window holds only a fifth of the sessions. The
+real-data design therefore uses multi-year windows.
+
+\paragraph{At the higher level, selections are true discoveries but mostly
+known ones.} At SNR \SynSnrHigh{} GP selected
+\SynMeanSd{0.15}{evolutionary}{n_selected} factors per run and random search
+\SynMeanSd{0.15}{random}{n_selected}, and the true FDP was \SynMeanSd{0.15}{evolutionary}{fdp_true} for GP
+and \SynMeanSd{0.15}{random}{fdp_true} for random search. The test
+non-significance rate, \SynMeanSd{0.15}{evolutionary}{test_nonsignificant_rate}
+and \SynMeanSd{0.15}{random}{test_nonsignificant_rate}, therefore measures
+power, not error. The composite test IC was
+\SynMeanSd{0.15}{evolutionary}{composite_test_ic} (GP) and
+\SynMeanSd{0.15}{random}{composite_test_ic} (random), against
+\SynOracleHighMin{}--\SynOracleHighMax{} for the planted composite; the
+difference between the arms is within one seed standard deviation. Only the
+textbook signals were recovered: neither arm selected the library-family
+signal (\SynLibraryFamilySelected{} runs) or the drawn signal
+(\SynDrawnSelected{} runs), and no evaluated trial matched either
+(\SynLibraryFamilyFound{} and \SynDrawnFound{} runs), although both are in
+the baselines' search space. At this budget, the part of the benchmark that
+prior knowledge cannot solve is untouched by undirected search.
+
+\paragraph{Syntax-based novelty would have misled.} The factors selected at
+SNR \SynSnrHigh{} have structural novelty
+\SynMeanSd{0.15}{evolutionary}{structural_novelty_mean} (GP) and
+\SynMeanSd{0.15}{random}{structural_novelty_mean} (random), which would read
+as new structure. Their behavioural novelty is
+\SynMeanSd{0.15}{evolutionary}{behavioural_novelty_mean} and
+\SynMeanSd{0.15}{random}{behavioural_novelty_mean}: their values are close to
+those of library factors, as expected for re-expressions of the textbook
+signals. Rediscovery must be measured on values, which is how the LLM study
+will report it.
+
+\paragraph{Syntactic deduplication undercounts repeated hypotheses.} Genetic
+programming produced \SynMeanSd{0.15}{evolutionary}{n_behaviour_duplicates}
+evaluated trials per run at SNR \SynSnrHigh{} whose per-date ranks repeated
+an earlier trial's, and random search
+\SynMeanSd{0.15}{random}{n_behaviour_duplicates}. Counted as separate
+hypotheses, such clusters would inflate the formation screen's discoveries,
+since a step-up procedure rewards clusters of equal p-values.
+
+\subsection{LLM-guided search on the synthetic benchmark}
+\label{sec:results-llm-synthetic}
+
+\todo{Pending: no LLM experiment has been run. After the pre-registered run
+(seeds 100--119 $\times$ 2 SNR levels plus null markets, responses recorded
+for replay), report the following: the LLM arm in
+Tables~\ref{tab:synthetic-headline} to~\ref{tab:synthetic-null}; the H2
+McNemar tests on the drawn signal; validity, duplicate and degenerate rates;
+recall as a function of trials and of cost, against the compute-matched
+arm; served model identifiers; and token usage.}
+
+\subsection{Real-market comparison (RQ1, RQ2)}
+\label{sec:results-real}
+
+\todo{Pending: no real-market evaluation has been run. After the
+pre-registered reveals, report the following per arm, universe and
+replicate: trial accounting and the selection funnel; sealed-test IC, ICIR
+and Newey--West $t$ of the composite and of each factor; the test
+non-significance rate; long-short net Sharpe with cost sensitivity (0, 5, 10
+and 20 bps); turnover; the registry's exploration and reveal counts; and the
+H1 tests with their decision.}
+
+\subsection{Memorization and look-ahead (RQ3)}
+\label{sec:results-contamination}
+
+\todo{Pending: report the pre/post knowledge-cutoff difference-in-differences
+against GP (H3) with the cutoff date's documentation source, the
+behavioural-novelty-stratified LLM advantage, and the anonymization-probe
+results on the pre-cutoff validation window.}
+
+\subsection{Ablations (RQ4)}
+\label{sec:results-ablations}
+
+\todo{Pending: report the feedback on/off test (H4), the rationale on/off and
+effort ablations, and the budget-scaling study, on synthetic data and the
+validation window only.}

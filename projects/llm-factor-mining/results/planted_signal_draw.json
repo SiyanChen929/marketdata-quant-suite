@@ -1,0 +1,569 @@
+{
+  "accepted": {
+    "canonical": "delta(ts_cov(cs_demean(open),ts_argmin(low,20),5),1)",
+    "complexity": 7.5,
+    "coverage": 1.0,
+    "depth": 4,
+    "distinct_share": 1.0,
+    "expression": "delta(ts_cov(ts_argmin(low,20),cs_demean(open),5),1)",
+    "iterations": {
+      "0.05": 15,
+      "0.15": 29
+    },
+    "k": 40,
+    "max_abs_corr": 0.05368131142675185,
+    "nearest_reference": "reversal_5d",
+    "reasons": []
+  },
+  "note": "SYNTHETIC DATA - NOT EVIDENCE ABOUT REAL MARKETS. Pre-registered draw; see benchmark/draw.py.",
+  "procedure": {
+    "convergence_snrs": [
+      0.05,
+      0.15
+    ],
+    "draw_seed": 20260925,
+    "grammar": {
+      "exponents": [
+        0.5,
+        2.0
+      ],
+      "literals": [
+        0.5,
+        1.0,
+        2.0
+      ],
+      "max_depth": 4,
+      "operators": [
+        "add",
+        "sub",
+        "mul",
+        "div",
+        "neg",
+        "abs",
+        "sign",
+        "log",
+        "sqrt",
+        "power",
+        "delay",
+        "delta",
+        "ts_mean",
+        "ts_std",
+        "ts_sum",
+        "ts_min",
+        "ts_max",
+        "ts_rank",
+        "ts_zscore",
+        "ts_argmax",
+        "ts_argmin",
+        "decay_linear",
+        "ts_corr",
+        "ts_cov",
+        "cs_rank",
+        "cs_zscore",
+        "cs_demean"
+      ],
+      "p_leaf": 0.35,
+      "p_literal": 0.15,
+      "terminals": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "returns",
+        "vwap_proxy",
+        "dollar_volume"
+      ],
+      "windows": [
+        1,
+        2,
+        3,
+        5,
+        10,
+        20,
+        40,
+        60
+      ]
+    },
+    "max_abs_correlation": 0.3,
+    "max_complexity": 8.0,
+    "min_coverage": 0.9,
+    "min_depth": 3,
+    "min_distinct_share": 0.95,
+    "min_distinct_values": 10,
+    "reference_seed": 424242
+  },
+  "rejected": [
+    {
+      "canonical": "ts_argmin(high,5)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_argmin(high,5)",
+      "k": 0,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "ts_std(returns,2)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_std(returns,2)",
+      "k": 1,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "abs(open)",
+      "complexity": 2.0,
+      "depth": 2,
+      "expression": "abs(open)",
+      "k": 2,
+      "reasons": [
+        "C1: depth 2 < 3",
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "cs_zscore(delay(sign(high),3))",
+      "complexity": 4.5,
+      "coverage": 0.0,
+      "depth": 4,
+      "distinct_share": 0.0,
+      "expression": "cs_zscore(delay(sign(high),3))",
+      "k": 3,
+      "reasons": [
+        "C2: coverage 0.000 < 0.9",
+        "C2: only 0.000 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "ts_rank(dollar_volume,40)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_rank(dollar_volume,40)",
+      "k": 4,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "ts_mean(ts_mean(open,40),10)",
+      "complexity": 4.0,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "ts_mean(ts_mean(open,40),10)",
+      "k": 5,
+      "max_abs_corr": 0.7802497048038785,
+      "nearest_reference": "illiquidity_20d",
+      "reasons": [
+        "C3: |corr| 0.780 >= 0.3 with illiquidity_20d"
+      ]
+    },
+    {
+      "canonical": "add(div(cs_demean(open),cs_demean(vwap_proxy)),open)",
+      "complexity": 7.0,
+      "depth": 4,
+      "expression": "add(open,div(cs_demean(open),cs_demean(vwap_proxy)))",
+      "k": 6,
+      "reasons": [
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "div(close,ts_sum(decay_linear(returns,5),5))",
+      "complexity": 6.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 1.0,
+      "expression": "div(close,ts_sum(decay_linear(returns,5),5))",
+      "k": 7,
+      "max_abs_corr": 0.3547871824860911,
+      "nearest_reference": "price_zscore_20d",
+      "reasons": [
+        "C3: |corr| 0.355 >= 0.3 with price_zscore_20d"
+      ]
+    },
+    {
+      "canonical": "sqrt(open)",
+      "complexity": 2.0,
+      "depth": 2,
+      "expression": "sqrt(open)",
+      "k": 8,
+      "reasons": [
+        "C1: depth 2 < 3",
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "ts_sum(abs(vwap_proxy),2)",
+      "complexity": 3.5,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "ts_sum(abs(vwap_proxy),2)",
+      "k": 9,
+      "max_abs_corr": 0.7775918907402839,
+      "nearest_reference": "illiquidity_20d",
+      "reasons": [
+        "C3: |corr| 0.778 >= 0.3 with illiquidity_20d"
+      ]
+    },
+    {
+      "canonical": "ts_zscore(add(low,open),5)",
+      "complexity": 4.5,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "ts_zscore(add(low,open),5)",
+      "k": 10,
+      "max_abs_corr": 0.6988387900442145,
+      "nearest_reference": "reversal_5d",
+      "reasons": [
+        "C3: |corr| 0.699 >= 0.3 with reversal_5d"
+      ]
+    },
+    {
+      "canonical": "cs_zscore(ts_sum(open,60))",
+      "complexity": 3.5,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "cs_zscore(ts_sum(open,60))",
+      "k": 11,
+      "max_abs_corr": 0.7811362254410444,
+      "nearest_reference": "illiquidity_20d",
+      "reasons": [
+        "C3: |corr| 0.781 >= 0.3 with illiquidity_20d"
+      ]
+    },
+    {
+      "canonical": "abs(cs_demean(cs_zscore(dollar_volume)))",
+      "complexity": 4.0,
+      "depth": 4,
+      "expression": "abs(cs_demean(cs_zscore(dollar_volume)))",
+      "k": 12,
+      "reasons": [
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "add(high,vwap_proxy)",
+      "complexity": 3.0,
+      "depth": 2,
+      "expression": "add(vwap_proxy,high)",
+      "k": 13,
+      "reasons": [
+        "C1: depth 2 < 3",
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "ts_argmax(abs(ts_max(vwap_proxy,3)),3)",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.0,
+      "expression": "ts_argmax(abs(ts_max(vwap_proxy,3)),3)",
+      "k": 14,
+      "reasons": [
+        "C2: only 0.000 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "div(delta(ts_rank(close,5),2),returns)",
+      "complexity": 6.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 1.0,
+      "expression": "div(delta(ts_rank(close,5),2),returns)",
+      "iterations": {
+        "0.05": 39
+      },
+      "k": 15,
+      "max_abs_corr": 0.09692669894647628,
+      "nearest_reference": "range_volatility_20d",
+      "reasons": [
+        "C4: no fixed point at SNR 0.15: planted-alpha fixed point did not converge in 200 iterations (residual 0.0255); lower snr or raise max_iterations"
+      ]
+    },
+    {
+      "canonical": "ts_cov(cs_zscore(add(0.5,close)),sub(close,cs_demean(low)),40)",
+      "complexity": 9.0,
+      "depth": 4,
+      "expression": "ts_cov(sub(close,cs_demean(low)),cs_zscore(add(close,0.5)),40)",
+      "k": 16,
+      "reasons": [
+        "C1: complexity 9 > 8"
+      ]
+    },
+    {
+      "canonical": "decay_linear(ts_mean(open,5),60)",
+      "complexity": 4.0,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "decay_linear(ts_mean(open,5),60)",
+      "k": 17,
+      "max_abs_corr": 0.7829723514063269,
+      "nearest_reference": "illiquidity_20d",
+      "reasons": [
+        "C3: |corr| 0.783 >= 0.3 with illiquidity_20d"
+      ]
+    },
+    {
+      "canonical": "ts_cov(dollar_volume,dollar_volume,20)",
+      "complexity": 3.5,
+      "depth": 2,
+      "expression": "ts_cov(dollar_volume,dollar_volume,20)",
+      "k": 18,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "ts_max(ts_argmin(sqrt(dollar_volume),3),20)",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.0,
+      "expression": "ts_max(ts_argmin(sqrt(dollar_volume),3),20)",
+      "k": 19,
+      "reasons": [
+        "C2: only 0.000 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "delay(decay_linear(cs_rank(vwap_proxy),60),40)",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 1.0,
+      "expression": "delay(decay_linear(cs_rank(vwap_proxy),60),40)",
+      "k": 20,
+      "max_abs_corr": 0.774649017177042,
+      "nearest_reference": "illiquidity_20d",
+      "reasons": [
+        "C3: |corr| 0.775 >= 0.3 with illiquidity_20d"
+      ]
+    },
+    {
+      "canonical": "ts_argmax(ts_rank(abs(vwap_proxy),40),3)",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.0,
+      "expression": "ts_argmax(ts_rank(abs(vwap_proxy),40),3)",
+      "k": 21,
+      "reasons": [
+        "C2: only 0.000 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "mul(delta(delay(dollar_volume,10),10),ts_argmax(ts_cov(volume,vwap_proxy,20),60))",
+      "complexity": 10.0,
+      "depth": 4,
+      "expression": "mul(ts_argmax(ts_cov(volume,vwap_proxy,20),60),delta(delay(dollar_volume,10),10))",
+      "k": 22,
+      "reasons": [
+        "C1: complexity 10 > 8"
+      ]
+    },
+    {
+      "canonical": "ts_max(log(ts_argmin(high,20)),40)",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.07525325615050651,
+      "expression": "ts_max(log(ts_argmin(high,20)),40)",
+      "k": 23,
+      "reasons": [
+        "C2: only 0.075 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "abs(mul(neg(returns),ts_cov(high,returns,20)))",
+      "complexity": 7.5,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 1.0,
+      "expression": "abs(mul(ts_cov(high,returns,20),neg(returns)))",
+      "k": 24,
+      "max_abs_corr": 0.3747879974280312,
+      "nearest_reference": "low_volatility_20d",
+      "reasons": [
+        "C3: |corr| 0.375 >= 0.3 with low_volatility_20d"
+      ]
+    },
+    {
+      "canonical": "add(2.0,cs_rank(power(vwap_proxy,2.0)))",
+      "complexity": 5.0,
+      "depth": 4,
+      "expression": "add(cs_rank(power(vwap_proxy,2.0)),2.0)",
+      "k": 25,
+      "reasons": [
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "ts_mean(high,10)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_mean(high,10)",
+      "k": 26,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "ts_mean(close,60)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_mean(close,60)",
+      "k": 27,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "cs_rank(neg(close))",
+      "complexity": 3.0,
+      "depth": 3,
+      "expression": "cs_rank(neg(close))",
+      "k": 28,
+      "reasons": [
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "ts_argmax(ts_argmin(delta(volume,20),3),60)",
+      "complexity": 5.5,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.0688622754491018,
+      "expression": "ts_argmax(ts_argmin(delta(volume,20),3),60)",
+      "k": 29,
+      "reasons": [
+        "C2: only 0.069 of dates have >= 10 distinct values"
+      ]
+    },
+    {
+      "canonical": "ts_mean(ts_argmax(vwap_proxy,10),60)",
+      "complexity": 4.0,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "ts_mean(ts_argmax(vwap_proxy,10),60)",
+      "k": 30,
+      "max_abs_corr": 0.46408142387752055,
+      "nearest_reference": "momentum_6_1",
+      "reasons": [
+        "C3: |corr| 0.464 >= 0.3 with momentum_6_1"
+      ]
+    },
+    {
+      "canonical": "mul(0.5,ts_argmin(cs_rank(close),40))",
+      "complexity": 5.0,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 1.0,
+      "expression": "mul(ts_argmin(cs_rank(close),40),0.5)",
+      "k": 31,
+      "max_abs_corr": 0.4860902150576787,
+      "nearest_reference": "reversal_21d",
+      "reasons": [
+        "C3: |corr| 0.486 >= 0.3 with reversal_21d"
+      ]
+    },
+    {
+      "canonical": "ts_zscore(volume,3)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_zscore(volume,3)",
+      "k": 32,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "neg(ts_cov(ts_corr(close,open,3),ts_min(open,60),40))",
+      "complexity": 8.5,
+      "depth": 4,
+      "expression": "neg(ts_cov(ts_corr(close,open,3),ts_min(open,60),40))",
+      "k": 33,
+      "reasons": [
+        "C1: complexity 8.5 > 8"
+      ]
+    },
+    {
+      "canonical": "power(dollar_volume,0.5)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "power(dollar_volume,0.5)",
+      "k": 34,
+      "reasons": [
+        "C1: depth 2 < 3",
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "neg(dollar_volume)",
+      "complexity": 2.0,
+      "depth": 2,
+      "expression": "neg(dollar_volume)",
+      "k": 35,
+      "reasons": [
+        "C1: depth 2 < 3",
+        "C1: no time-series operator"
+      ]
+    },
+    {
+      "canonical": "ts_argmin(returns,60)",
+      "complexity": 2.5,
+      "depth": 2,
+      "expression": "ts_argmin(returns,60)",
+      "k": 36,
+      "reasons": [
+        "C1: depth 2 < 3"
+      ]
+    },
+    {
+      "canonical": "ts_zscore(neg(high),5)",
+      "complexity": 3.5,
+      "coverage": 1.0,
+      "depth": 3,
+      "distinct_share": 1.0,
+      "expression": "ts_zscore(neg(high),5)",
+      "k": 37,
+      "max_abs_corr": 0.6819220849937809,
+      "nearest_reference": "reversal_5d",
+      "reasons": [
+        "C3: |corr| 0.682 >= 0.3 with reversal_5d"
+      ]
+    },
+    {
+      "canonical": "div(ts_zscore(sqrt(dollar_volume),20),ts_cov(ts_mean(volume,60),ts_sum(low,10),2))",
+      "complexity": 11.0,
+      "depth": 4,
+      "expression": "div(ts_zscore(sqrt(dollar_volume),20),ts_cov(ts_mean(volume,60),ts_sum(low,10),2))",
+      "k": 38,
+      "reasons": [
+        "C1: complexity 11 > 8"
+      ]
+    },
+    {
+      "canonical": "ts_argmin(abs(abs(low)),3)",
+      "complexity": 4.5,
+      "coverage": 1.0,
+      "depth": 4,
+      "distinct_share": 0.0,
+      "expression": "ts_argmin(abs(abs(low)),3)",
+      "k": 39,
+      "reasons": [
+        "C2: only 0.000 of dates have >= 10 distinct values"
+      ]
+    }
+  ]
+}

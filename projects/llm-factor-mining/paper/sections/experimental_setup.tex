@@ -1,0 +1,237 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Synthetic planted-alpha benchmark}
+\label{sec:synthetic}
+
+\paragraph{Purpose.} The benchmark checks that the harness works end to end
+(evidence level~2 of the suite's governance ladder). It measures whether a
+search method can recover signals that are \emph{known} to exist, and how
+often the protocol selects anything on \emph{null} markets where nothing is
+planted, under the same budget and protocol as the real-data study. It says
+nothing about real markets.
+
+\paragraph{Data-generating process.} For asset $i$ on day $t$, the return is
+\[
+r_{t,i}=\beta_i m_t+\sigma_i\varepsilon_{t,i}
+      +s\sum_{k=1}^{K}w_k\,z_{k;t-\ell-1,i},\qquad
+z_{k;t}=\mathrm{cs\_zscore}\big(g_k(\text{bars up to }t)\big),
+\]
+where:
+\begin{itemize}
+  \item each $g_k$ is a planted expression in the factor language;
+  \item $s=\mathrm{SNR}\cdot\overline{\sigma}$, with $\overline{\sigma}$ the
+    average idiosyncratic volatility;
+  \item the weights satisfy $\sum_k w_k^2=1$.
+\end{itemize}
+The planted component of $r_t$ uses signal values from $t-\ell-1$. A signal
+observed at close $t$ therefore earns its return exactly after the execution
+lag used by the evaluator.
+
+The remaining parameters are:
+\begin{itemize}
+  \item $\beta_i\sim U(0.5,1.5)$, $\sigma_i\sim U(0.012,0.030)$,
+    $m_t\sim N(0.0003,0.010^2)$ and $\varepsilon_{t,i}\sim N(0,1)$;
+  \item returns are clipped at $\pm0.5$;
+  \item log volume follows an AR(1) process with persistence $0.7$ and
+    innovation scale $0.35$, of which a share of $0.3$ is common across
+    assets. Volume is independent of returns;
+  \item open, high and low are noise around the close path.
+\end{itemize}
+The planted signals depend on prices that themselves contain the planted
+component. The price path is therefore solved as a fixed point: returns are
+rebuilt and every $z_k$ is re-evaluated \emph{with the package's own
+evaluator} until the maximum absolute change is at most $10^{-12}$. On the
+planted markets this took
+\SynIterationsLow{} iterations at the low SNR level and \SynIterationsHigh{}
+at the high one, with a maximum residual of \SynMaxResidual{}. The bars have finality \code{confirmed} and pass the
+same panel validation as real data.
+
+\paragraph{Planted signals.} There are $K=4$ signals with equal weights, in
+three families:
+\begin{itemize}
+  \item \emph{textbook}: \code{reversal\_5}, \code{-ts\_mean(returns, 5)},
+    and \code{abnormal\_volume\_20}, \code{volume / ts\_mean(volume, 20)};
+  \item \emph{library family}: \code{volume\_return\_corr\_10},
+    \code{-ts\_corr(returns, delta(log(volume), 1), 10)}, the volume--return
+    correlation idea behind Alpha\#2 of \citet{kakushadze2016alphas}, whose
+    formula is in the reference library;
+  \item \emph{drawn}: \code{\SynDrawnName}, \SynDrawnExpression{}, drawn at
+    random from the typed grammar by a procedure fixed before the draw. The
+    first candidate meeting four criteria was accepted: depth at least 3,
+    complexity at most 8 and a time-series operator; well defined on a
+    reference null market; mean rank correlation below $0.3$ in absolute
+    value with every library entry and every other planted signal; and a
+    convergent fixed point at both SNR levels. The draw record, with every
+    rejected candidate and its reasons, is committed with the results.
+\end{itemize}
+The textbook signals favour any proposer with prior knowledge of classic
+factors, such as an LLM, and so does the library-family signal to a lesser
+degree. Only the drawn signal is unknown to every proposer in advance; it
+comes from the random baseline's own sampling distribution, which if anything
+favours that baseline. Being drawn at random does not prove that the
+expression is absent from the literature; the correlation criterion only
+shows that it is far, in values, from the reference library. Measured on the
+formation window of the planted markets, behavioural novelty against the
+library was \SynNoveltyReversal{} and \SynNoveltyVolume{} for the textbook
+signals, \SynNoveltyLibraryFamily{} for the library-family signal and
+\SynNoveltyDrawn{} for the drawn one. Every planted signal (up to its sign,
+which the protocol chooses) has a non-zero sampling probability under the
+random-grammar baseline, and its components are on genetic programming's
+menus.
+
+\paragraph{Grid and protocol.} The grid and protocol settings are:
+\begin{itemize}
+  \item \SynSymbols{} fictional symbols and \SynSessions{} sessions;
+  \item SNR $\in\{\SynSnrLow,\SynSnrHigh\}$ and market seeds $\{0,1,2\}$,
+    plus \SynNullSeeds{} null markets (SNR $0$, seeds $0$ to $9$); the
+    proposer seed is the market seed plus $10{,}000$;
+  \item a budget of \SynBudget{} trials and batches of \SynBatch{};
+  \item $\ell=h=1$, fractions $0.6/0.2/0.2$ and an embargo of 2 sessions;
+  \item a formation screen (BH at $q=\SynFdrAlpha$ over behavioural
+    classes, $m$ = budget minus behavioural duplicates), BH confirmation at
+    $q=\SynConfirmAlpha$ on validation, top-$k=\SynTopK$ and decorrelation at
+    $|\rho|<\SynMaxCorr$;
+  \item exactly one reveal per run.
+\end{itemize}
+The realized dispersion ratio of the planted component to idiosyncratic
+noise was \SynRealizedSnrLow{} on average at the low SNR level and
+\SynRealizedSnrHigh{} at the high one.
+
+\paragraph{Benchmark metrics.}
+\begin{itemize}
+  \item \emph{Recovery}: planted signal $k$ counts as recovered if some
+    selected factor's oriented test-window values have mean cross-sectional
+    Spearman correlation $\bar\rho\ge\SynRecoveryThreshold$ with $z_k$. The
+    rule is signed: an oriented factor that bets against $z_k$ recovers
+    nothing.
+  \item \emph{Recall}: $|\bar\rho|\ge\SynRecoveryThreshold$ for any
+    evaluated trial on the formation window, using every
+    \SynRecallStride{}th formation date. Recall asks whether the proposer
+    ever found the signal, selected or not.
+  \item \emph{True FDP}: the share of selected factors that are false by
+    ground truth, i.e.\ whose oriented rank correlation with the planted
+    composite (proportional to the true expected return) on the test window
+    is below \SynTrueDiscoveryThreshold{}. On a null market every selected
+    factor is false.
+  \item \emph{Test non-significance rate}: the share of selected factors
+    whose one-sided test IC is not significant under BH at \SynTestAlpha{}
+    within the selected set. It measures the power of the test window, not
+    falsity.
+  \item Composite and mean per-factor test IC and ICIR, behavioural and
+    structural novelty, the selection funnel (behavioural duplicates,
+    degenerate trials, screen survivors, confirmed candidates) and, on null
+    markets, the share of runs that selected anything.
+\end{itemize}
+As an oracle reference, we score the planted signals themselves and their
+composite on the same test window; the oracle's \emph{power} is the share of
+planted signals that pass BH at \SynTestAlpha{} on the test window.
+
+\subsection{Real-market study (pre-registered; not yet run)}
+\label{sec:real}
+
+The real-market design is fixed in the project's research plan before any
+test-window access. We summarize it here.
+
+\paragraph{Data.} US equity daily bars from MarketData, read only through the
+suite's gateway with finality \code{confirmed}.
+\todo{Document the provider's split and dividend adjustment convention and
+the data-quality report (coverage, stale prices, extreme returns).}
+
+\paragraph{Universes.}
+\begin{itemize}
+  \item U1: liquid large capitalizations, selected by median formation-window
+    dollar volume.
+  \item U2: a broader liquid universe.
+\end{itemize}
+Membership is frozen at the end of the formation window.
+\todo{Final sizes and the share of names with truncated histories (a
+survivorship diagnostic).}
+
+\paragraph{Windows.} The data are split chronologically into formation,
+validation and sealed test windows with the embargo rule of
+Section~\ref{sec:metrics}. The test window must extend beyond the documented
+training-data cutoff of every model evaluated. A prospective window of
+sessions after the commitment date follows.
+\todo{Exact dates, fixed before the first reveal.}
+
+\paragraph{Arms and budgets.} The arms are:
+\begin{itemize}
+  \item A: random grammar;
+  \item B: genetic programming;
+  \item C: the classic library passed through the same selection;
+  \item D: LLM-guided search;
+  \item optionally E: an interactive-mining prompting
+    style~\citep{wang2023alphagpt} re-implemented in the same language and
+    budget;
+  \item F: compute-matched A and B, whose budget matches the LLM arm's
+    measured cost (at least $10^4$ trials) under the same trial accounting.
+\end{itemize}
+The primary budget is $B=200$ trials, with $R=5$ replicates per arm and
+universe. Equal trial budgets are not equal compute, and GP and
+reinforcement-learning alpha miners~\citep{yu2023alphagen} typically use far
+more evaluations, which is why arm F exists. Every planned test reveal is
+listed in advance and counted in the study registry.
+
+\paragraph{Hypotheses and decision rules.}
+\begin{itemize}
+  \item \textbf{H1.} The LLM beats both baselines on the sealed test. Two
+    estimands are tested separately: the mean daily difference in pooled
+    composite test IC (market sampling; a stationary block bootstrap over
+    test dates, in the spirit of \citet{hansen2005spa}) and the difference in
+    replicate-level composite ICIR (search-procedure variability; an
+    unpaired exact Mann--Whitney test, since LLM and baseline replicates share
+    nothing to pair on). Holm correction over the two comparisons; support
+    also requires a pre-set minimum median improvement.
+  \item \textbf{H2 (synthetic, seeds 100--119).} The LLM recovers the drawn
+    signal more often. The test is an exact McNemar test paired by market
+    seed, with Holm correction. The seeds exclude the harness seeds already
+    seen.
+  \item \textbf{H3.} The LLM's edge is not explained by period memorization.
+    The decision uses only the difference-in-differences $D$ of pre- versus
+    post-cutoff test IC between the LLM and the pre-specified GP baseline:
+    memorization is flagged if a bootstrap interval for $D$ lies below zero,
+    and absence of memorization is declared only by an equivalence test with
+    a margin fixed in advance. It is declared underpowered with fewer than
+    250 post-cutoff sessions.
+  \item \textbf{H4.} Formation feedback improves search. It is tested on
+    synthetic recall and on validation-window ICIR only.
+\end{itemize}
+Every test is one-sided at level $0.05$; the equivalence test of H3 is a pair of one-sided tests.
+
+\paragraph{Ablations.} Ablations use validation data only. They vary:
+\begin{itemize}
+  \item feedback (on or off);
+  \item the rationale requirement (on or off);
+  \item anonymization (on or off, as a contamination probe in a pre-cutoff
+    window only);
+  \item reasoning effort;
+  \item budget.
+\end{itemize}
+
+\subsection{Implementation and reproducibility}
+
+\paragraph{Software.} Everything is implemented in Python. The recorded
+software stack is \SynSoftware{}. The offline test suite checks:
+\begin{itemize}
+  \item absence of look-ahead for every operator;
+  \item the information barrier;
+  \item ledger tamper detection;
+  \item the seal rules;
+  \item the LLM backend's request shape and error handling, with a fake
+    client.
+\end{itemize}
+
+\paragraph{Runs and artifacts.} The synthetic benchmark (\SynRuns{} planted
+and \SynNullRuns{} null runs) took \SynRuntime{}~s of wall-clock time. It is
+deterministic: ledger timestamps are disabled, and rerunning four of its runs
+under a different hash seed reproduced their ledger heads and every scored
+field. Each run stores:
+\begin{itemize}
+  \item its configuration and the hash-chained ledger;
+  \item the selection and the reveal;
+  \item a provenance file with the data hash, template hashes, served model
+    identifiers, software versions and the ledger head.
+\end{itemize}
+LLM runs additionally record every request and its outcome, failures
+included, for exact offline replay.

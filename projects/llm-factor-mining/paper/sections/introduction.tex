@@ -1,0 +1,107 @@
+\section{Introduction}
+\label{sec:introduction}
+
+A formulaic alpha is a short program that maps past prices and volumes of a
+cross-section of assets to a score predicting next-period relative returns.
+Public catalogues of such programs~\citep{kakushadze2016alphas} and decades of
+anomaly research show both that the space is rich and that it is easy to
+overfit. \citet{harvey2016cross} argue that the conventional $t>2$ hurdle is
+far too permissive once the number of tested factors is acknowledged, and
+backtest overfitting is a well-documented failure mode in quantitative
+finance~\citep{bailey2014deflated,bailey2017pbo}. Automated search worsens
+this problem, because a search procedure can generate and test candidates
+faster than any human analyst. Genetic
+programming~\citep{koza1992genetic} and reinforcement
+learning~\citep{yu2023alphagen} have both been used to mine formulaic alphas.
+
+Large language models add a new kind of proposer. An LLM can write
+syntactically valid expressions, explain them in economic language, and
+refine them in response to feedback. LLM-guided program search has produced
+verifiable discoveries in mathematics~\citep{romeraparedes2024funsearch}, and
+interactive LLM systems for alpha mining have been
+proposed~\citep{wang2023alphagpt}. Finance differs from mathematics in two ways
+that matter for evaluation.
+\begin{enumerate}
+  \item \emph{Ground truth.} There is no verifier that certifies a factor. The
+    only evidence is statistical, drawn from one non-repeatable history, so a
+    method that proposes more candidates is guaranteed to find more spurious
+    ones unless every trial is counted.
+  \item \emph{Look-ahead through pre-training.} An LLM may have read which
+    signals worked in which period. LLMs have been used to predict returns from
+    text~\citep{lopezlira2023chatgpt}, and such predictions can suffer from
+    look-ahead bias inherited from the training
+    data~\citep{glasserman2023lookahead}. An apparent edge may therefore
+    reflect memory rather than search.
+\end{enumerate}
+
+\paragraph{Research questions.} This paper asks four questions:
+\begin{itemize}
+  \item \textbf{RQ1.} At an equal trial budget, does LLM-guided search yield
+    frozen factor sets that perform better on a sealed test window than random
+    grammar sampling and genetic programming, after multiplicity control that
+    counts all trials and confirms on data no proposer has seen?
+  \item \textbf{RQ2.} How do the methods differ in search efficiency?
+  \item \textbf{RQ3.} How much of any LLM advantage is explained by
+    rediscovering textbook factors, or by period-specific knowledge absorbed
+    during pre-training?
+  \item \textbf{RQ4.} Which components of the LLM proposer matter?
+\end{itemize}
+The hypotheses and decision rules were written before any LLM or real-data
+experiment, but after the first baseline runs on the synthetic benchmark: a
+review of those runs led us to revise the benchmark's planted signals and the
+synthetic hypothesis, and we disclose this. The rules are given in the
+project's research plan, whose hash is to be published before the first LLM
+call, and are summarized in Section~\ref{sec:setup}.
+
+\paragraph{Approach.} We treat the proposer as an untrusted component and
+build the evaluation protocol around it (Section~\ref{sec:method}):
+\begin{itemize}
+  \item \emph{The language.} Expressions are written in a typed language
+    whose operators only look backward, so no valid expression can read
+    future data.
+  \item \emph{Search.} The search loop evaluates on a price panel truncated
+    at the end of the formation window. The proposer receives only
+    formation-window statistics, through closed types that have no field for
+    anything else.
+  \item \emph{The ledger.} Every processed proposal is written to a
+    hash-chained ledger, including those that fail validation. A formation
+    screen counts every budgeted trial and merges behaviourally identical
+    ones; because adaptive proposers see formation results, the claim rests
+    on a second, confirmatory test on the validation window.
+  \item \emph{The hold-out.} The selected set is committed by hash and
+    revealed on the test window at most once; a project-wide registry fixes
+    each real-data study's windows in advance, counts exploratory
+    evaluations and caps reveals.
+  \item \emph{Contamination.} Diagnostics compare test performance before and
+    after the model's documented knowledge cutoff, and measure distance from
+    a library of classic factors on factor \emph{values}.
+\end{itemize}
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item An auditable protocol and open implementation for LLM-driven factor
+    search. It covers the language, the information barrier, the trial
+    ledger, the two-stage multiplicity control, the commit-then-reveal
+    hold-out and the study registry, and every control is covered by offline
+    tests.
+  \item A planted-alpha synthetic benchmark with null markets, whose ground
+    truth mixes textbook signals, a documented factor family and a signal
+    drawn at random by a pre-registered procedure; only the drawn signal
+    speaks to search beyond prior knowledge. Results on it are reported for
+    two baselines.
+  \item \todo{An equal-budget comparison of LLM, random-grammar and
+    genetic-programming search on US equities (pending).}
+  \item \todo{Contamination analysis: knowledge-cutoff difference-in-differences,
+    novelty stratification and anonymization probes (pending).}
+\end{enumerate}
+
+\paragraph{Current evidence.} The only experiment completed so far is the
+harness validation on synthetic data (Section~\ref{sec:results-synthetic}).
+With \SynBudget{} trials per run, neither baseline selected a factor in any
+of \SynNullRuns{} null-market runs, although genetic programming's formation
+screen alone passed spurious expressions. On planted markets both baselines
+recovered only textbook signals and never found the drawn signal, and
+genetic programming was not clearly better than random sampling. This leaves
+room to test whether LLM guidance helps. \todo{State the LLM and real-data findings once the
+pre-registered experiments have been run; do not edit this paragraph before
+then.}
