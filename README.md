@@ -1,12 +1,97 @@
 # MarketData Quant Suite
 
-An auditable quantitative-research monorepo for US equities and listed options. The suite turns several independent research projects into one coherent system:
+[![test](https://github.com/SiyanChen929/marketdata-quant-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/SiyanChen929/marketdata-quant-suite/actions/workflows/ci.yml)
+[![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB)](.github/workflows/ci.yml)
 
-1. acquire market prices once through MarketData;
-2. store completed and provisional sessions separately;
-3. reuse one canonical OHLCV contract across every research module;
-4. evaluate strategies with point-in-time, cost-aware controls; and
-5. retain manifests, tests, and failure evidence suitable for review.
+**Research software for trustworthy AI in quantitative finance:** LLM-guided discovery under multiple-testing control, and grounded, point-in-time tool use. Both rest on one audited market-data gateway and on case studies that apply the same validation rules.
+
+## Research
+
+The two research lines study one problem, trustworthy AI for quantitative research. An LLM's contribution counts only if the system around it counts every trial the model makes, and binds every number the model reports to data that existed at the time. The [research agenda](docs/research-agenda.md) sets out the questions, methods and milestones.
+
+### 1. LLM-guided factor mining under a sealed hold-out
+
+[`projects/llm-factor-mining`](projects/llm-factor-mining) · status: **manuscript in preparation**
+
+- **Question.** Does LLM-guided program search find cross-sectional equity factors that survive multiple-testing control over every trial, and a single sealed out-of-sample test, more often than random grammar search and genetic programming at the same trial budget? How much of any edge is rediscovery or memorization rather than search?
+- **Method.** A typed factor language that cannot look ahead; a hash-chained ledger that counts every proposal as a trial; a formation screen followed by confirmation on a validation window no proposer sees; a commit-then-reveal test hold-out; a planted-alpha benchmark with null markets; value-based novelty against a library of classic factors.
+- **Today.** The harness and two baselines (random grammar, genetic programming) are implemented, tested and validated on synthetic data. LLM and real-market experiments are pending.
+- [Research plan](projects/llm-factor-mining/docs/research-plan.md) · [result card](projects/llm-factor-mining/docs/result-card.md) · [paper draft](projects/llm-factor-mining/paper/)
+
+### 2. MarketData Agent: a governed, point-in-time LLM copilot
+
+[`projects/marketdata-agent`](projects/marketdata-agent) · status: **manuscript in preparation**
+
+- **Question.** Can a tool-using LLM copilot answer quantitative market questions with verifiable numeric grounding while respecting point-in-time and execution constraints, and how should that be measured?
+- **Method.** An as-of clock that refuses later dates instead of clamping them; a policy gate that cannot enable order execution; strict tools with content-addressed provenance; a rounding-aware grounding verifier; a hash-chained audit log; a 174-task benchmark with cutoff traps and trade-request traps, scored against an independent reference.
+- **Today.** The harness is implemented and tested, and five scripted baselines validate its instruments on synthetic data. No language model has been evaluated yet.
+- [Research plan](projects/marketdata-agent/docs/research-plan.md) · [safety model](projects/marketdata-agent/docs/safety-model.md) · [evaluation protocol](projects/marketdata-agent/docs/evaluation-protocol.md) · [paper draft](projects/marketdata-agent/paper/)
+
+Neither manuscript has been submitted. Venues named in the research plans are targets.
+
+## Evidence and reproducibility
+
+Results move up an evidence ladder one rung at a time ([research governance](projects/quant-research-platform/docs/research-governance.md)). The table shows where each research line stands today.
+
+| Evidence | What it can establish | llm-factor-mining | marketdata-agent |
+|---|---|---|---|
+| Offline tests, run in CI | The software behaves as specified: no look-ahead, every trial counted, gates refuse, tampering is detected | yes | yes |
+| Synthetic harness validation | The instruments detect what they are built to detect, against known ground truth | committed, deterministic | committed, byte-reproducible |
+| LLM experiments | How a model behaves inside the protocol | pending (needs an API key) | pending (needs an API key) |
+| Real-market experiments on confirmed MarketData bars | Anything about real markets | pending | pending |
+
+Rules for every number in this repository:
+
+- It is produced by a committed script from committed inputs, and synthetic results carry a banner saying so.
+- Paper tables are generated from the committed results, and tests fail when a table, or a copy in a README, drifts from them.
+- Every LLM backend is tested offline with injected fake clients. No model output appears in the committed evidence.
+- Null and negative results stay visible.
+
+**Excerpts of the synthetic harness validation.** They are copied verbatim from the committed result files, and `tests/test_suite_contract.py` fails if they drift.
+
+Factor mining on null markets, where nothing is planted ([full summary](projects/llm-factor-mining/results/synthetic_benchmark/summary.md)):
+
+<!-- verbatim: projects/llm-factor-mining/results/synthetic_benchmark/summary.md -->
+> **SYNTHETIC DATA - NOT EVIDENCE ABOUT REAL MARKETS.** Prices are simulated with known planted signals to test whether the search protocol can recover them, and how often it selects factors when nothing is planted. These results say nothing about the profitability of any factor in real markets.
+
+| arm | complete runs | runs selecting ≥ 1 factor | selected | screen survivors | confirmed on validation | composite test t (runs that selected) |
+|---|---|---|---|---|---|---|
+| evolutionary | 10/10 | 0/10 | 0.0 ± 0.0 | 4.5 ± 10.9 | 0.0 ± 0.0 | n/a |
+| random | 10/10 | 0/10 | 0.0 ± 0.0 | 0.2 ± 0.6 | 0.0 ± 0.0 | n/a |
+
+<!-- /verbatim -->
+
+Neither arm selected a factor on any null market. The formation screen alone let candidates through for genetic programming, whose feedback-driven proposals make formation p-values invalid for false-discovery control; the confirmation step on unseen validation data removed them all. Planted-market recovery, oracle power and per-run ledger heads are in the full summary.
+
+Copilot harness, scripted baselines ([full summary](projects/marketdata-agent/results/benchmark/summary.md)):
+
+<!-- verbatim: projects/marketdata-agent/results/benchmark/summary.md -->
+> **harness-validation baselines on synthetic data; LLM agent results pending (requires ANTHROPIC_API_KEY)**
+
+| Agent | Tasks | Accuracy [95% CI] | Grounding (claims) | Citation | Look-ahead attempt episodes | Leak episodes | Denied-call episodes | Tool calls / task |
+|---|---|---|---|---|---|---|---|---|
+| `oracle` | 174 | 100.0% [97.8, 100.0] | 100.0% | 100.0% | 0.0% | 0.0% | 0.0% | 1.05 |
+| `lookahead_naive` | 174 | 79.3% [72.7, 84.7] | 100.0% | 100.0% | 51.1% | 0.0% | 58.0% | 1.86 |
+| `ungrounded` | 174 | 10.9% [7.1, 16.4] | 0.0% | 71.8% | 0.0% | 0.0% | 0.0% | 1.05 |
+| `no_guard` | 174 | 47.7% [40.4, 55.1] | 100.0% | 100.0% | 51.1% | 48.3% | 6.9% | 1.25 |
+| `abstain_or_refuse` | 174 | 27.6% [21.5, 34.7] | n/a | n/a | 0.0% | 0.0% | 0.0% | 0.00 |
+
+<!-- /verbatim -->
+
+These agents are scripted policies, not language models. Each row checks that one instrument registers a behaviour the policy was programmed to have. `no_guard` is the same policy with the look-ahead refusal lifted: it reads rows after the cutoff and still looks fully grounded, so grounding alone is not a safety metric.
+
+Regenerate the evidence into a scratch directory and compare it with the committed files:
+
+```bash
+python projects/marketdata-agent/scripts/run_benchmark.py --out /tmp/agent-bench     # about 25 s
+diff -r -x audit projects/marketdata-agent/results/benchmark /tmp/agent-bench      # no output: identical
+python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py \
+  --out /tmp/lfm-bench --runs-dir /tmp/lfm-runs                                    # about 6 min
+python projects/llm-factor-mining/scripts/render_paper_tables.py --check
+python projects/marketdata-agent/scripts/render_paper_tables.py --check
+```
+
+The regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line.
 
 ## System map
 
@@ -16,45 +101,64 @@ flowchart LR
     GW --> RAW[hashed request cache]
     RAW --> CONF[confirmed market-data lake]
     RAW --> PROV[provisional staging]
-    CONF --> CORE[quant-research-platform]
-    CONF --> PAIRS[equity-pairs-research]
-    CONF --> EVENT[index-rebalance-event-study]
+    subgraph SUB["Empirical substrate"]
+        CORE[quant-research-platform]
+        PAIRS[equity-pairs-research]
+        EVENT[index-rebalance-event-study]
+    end
+    subgraph AI["Research lines: AI for quantitative research"]
+        LFM[llm-factor-mining]
+        AGENT[marketdata-agent]
+    end
+    CONF --> CORE
+    CONF --> PAIRS
+    CONF --> EVENT
+    CONF --> LFM
+    CONF -->|"point-in-time, read-only"| AGENT
+    LLM["Claude API<br/>optional, recorded, replayable"] -.-> LFM
+    LLM -.-> AGENT
     CORE --> EVIDENCE[versioned research evidence]
     PAIRS --> EVIDENCE
     EVENT --> EVIDENCE
+    LFM -->|"trial ledger, sealed reveal"| EVIDENCE
+    AGENT -->|"audit log, grounding report"| EVIDENCE
 ```
 
-All market-price code must enter through `packages/quant-marketdata`. Vendor data stays under `QUANT_DATA_HOME`, outside Git. FRED may supply optional macro covariates to the pairs study; it is never a second source for prices.
+All market-price code enters through `packages/quant-marketdata`. Vendor data stays under `QUANT_DATA_HOME`, outside Git. FRED may supply optional macro covariates to the pairs study; it is never a second source for prices. The language model is an optional dependency: no test calls it, and every live call is recorded with the served model id so that a run can be replayed offline.
 
 The machine-readable suite contract is [`configs/suite.yml`](configs/suite.yml).
 
-## Included work
+## Components
 
 | Component | Portfolio purpose | Shared-data role |
 |---|---|---|
-| `packages/quant-marketdata` | Reusable ingestion, validation, cache, finality, and lineage | Single gateway for stock bars and option chains |
-| `projects/quant-research-platform` | Flagship research, portfolio, risk, execution, and evidence engine | Reads MarketData through the shared gateway and confirmed lake |
-| `projects/equity-pairs-research` | Cost-aware statistical-arbitrage case study with honest negative results | Uses shared confirmed daily bars; optional FRED features remain separate |
-| `projects/index-rebalance-event-study` | Event-time and volatility research under point-in-time constraints | Uses shared confirmed daily bars; licensed event inputs remain private |
+| [`packages/quant-marketdata`](packages/quant-marketdata) | Reusable ingestion, validation, cache, finality, and lineage | Single gateway for stock bars and option chains |
+| [`projects/llm-factor-mining`](projects/llm-factor-mining) | Research line 1: LLM-guided factor discovery under multiple-testing control and a sealed hold-out | Reads confirmed daily bars from the shared store; the test window is loaded only after the factor set is frozen |
+| [`projects/marketdata-agent`](projects/marketdata-agent) | Research line 2: governed LLM copilot and benchmark for numeric grounding, look-ahead and action safety | Serves confirmed bars dated on or before the as-of date through read-only tools |
+| [`projects/quant-research-platform`](projects/quant-research-platform) | Flagship research, portfolio, risk, execution, and evidence engine | Reads MarketData through the shared gateway and confirmed lake |
+| [`projects/equity-pairs-research`](projects/equity-pairs-research) | Cost-aware statistical-arbitrage case study with honest negative results | Uses shared confirmed daily bars; optional FRED features remain separate |
+| [`projects/index-rebalance-event-study`](projects/index-rebalance-event-study) | Event-time and volatility research under point-in-time constraints | Uses shared confirmed daily bars; licensed event inputs remain private |
 
-The selection is deliberate. It demonstrates systems engineering, statistical research, market microstructure, disciplined validation, and intellectual honesty without publishing redundant demos or incompatible data domains.
+The selection is deliberate: one data plane, one reusable engine, two case studies and two research lines that share one contract. The reasoning is in [project selection](docs/project-selection.md) and the [system blueprint](docs/system-blueprint.md).
 
 ## Quick start
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-./scripts/bootstrap.sh
+./scripts/bootstrap.sh            # editable installs with [dev] extras; no LLM SDK
 
-cp .env.example .env
-# Add MARKETDATA_TOKEN and choose an external QUANT_DATA_HOME.
-set -a; source .env; set +a
-
-./scripts/test-all.sh
+./scripts/test-all.sh             # every component, offline, no credentials needed
 python scripts/repository-audit.py
 ```
 
-Example data access:
+Real-market work needs a MarketData token and an external data home:
+
+```bash
+cp .env.example .env
+# Add MARKETDATA_TOKEN and choose an external QUANT_DATA_HOME.
+set -a; source .env; set +a
+```
 
 ```python
 from quant_marketdata import MarketDataClient
@@ -75,7 +179,9 @@ python scripts/download-bars.py --symbols SPY,AAPL,MSFT \
   --start 2020-01-01 --end 2025-12-31 --finality confirmed
 ```
 
-See [the system blueprint](docs/system-blueprint.md), [data-source policy](docs/data-source-policy.md), [migration and storage plan](docs/migration-and-storage.md), and [project selection](docs/project-selection.md) before adding another strategy.
+Live LLM runs need the optional extra and `ANTHROPIC_API_KEY` in the environment, for example `python -m pip install -e "projects/llm-factor-mining[llm]"`. Each project README lists its live commands, which have not yet been run.
+
+Read the [data-source policy](docs/data-source-policy.md) and the [migration and storage plan](docs/migration-and-storage.md) before adding a data source or strategy.
 
 ## Research standards
 
@@ -84,6 +190,8 @@ See [the system blueprint](docs/system-blueprint.md), [data-source policy](docs/
 - Signals generated at a close execute no earlier than the next session.
 - Costs, borrow assumptions, turnover, and capacity constraints are explicit.
 - Hyperparameter selection and final evaluation use chronological separation.
+- Every proposal a search method makes is a counted trial. A sealed test window is revealed once per commitment, and reveals are registered so that repeats are countable.
+- An LLM experiment starts only after its research plan is frozen. Every model call records the requested and served model, the stop reason and token usage, and the run can be replayed offline from its recording.
 - Negative findings remain visible; a rejected hypothesis is valid research evidence.
 - Every platform run records `data_provenance.json` with source, finality, date coverage, the canonical price snapshot captured with the read, and exact reference-cache snapshots used by fundamentals/events.
 - Credentials, licensed inputs, raw vendor data, and bulky run artifacts never enter Git.
@@ -92,4 +200,10 @@ See [the system blueprint](docs/system-blueprint.md), [data-source policy](docs/
 
 MarketData currently covers the US stock/ETF and listed-options price domains used here. Commodity futures, Chinese A-shares, point-in-time index membership, official auction imbalance data, borrow/locate history, and macro vintages require specialist inputs. Those projects are documented under [`extensions/`](extensions/README.md) and are intentionally outside the one-provider price layer.
 
-This repository contains research software and synthetic fixtures. It does not contain investment advice, production orders, proprietary vendor data, or a claim that historical results will persist.
+No language model has been evaluated in the committed evidence, and no real-market result of either research line exists yet. Both manuscripts are drafts.
+
+This repository contains research software and synthetic fixtures. It does not contain investment advice, production orders, proprietary vendor data, or a claim that historical results will persist. There is no real broker connection: the platform's order interface ships a paper broker and a live stub that refuses to submit, and the two research lines have no order path at all.
+
+## Citation
+
+Cite the software with the metadata in [`CITATION.cff`](CITATION.cff); GitHub shows it under "Cite this repository". The two manuscripts are unpublished drafts, so cite them only once a preprint exists.

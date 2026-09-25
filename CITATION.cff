@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: "MarketData Quant Suite"
+abstract: >-
+  Research software for trustworthy AI in quantitative finance. A shared,
+  confirmed-only US market-data gateway feeds point-in-time research projects,
+  including two research lines in preparation: LLM-guided formulaic factor
+  mining under multiple-testing control and a sealed hold-out, and a governed,
+  point-in-time LLM copilot with a numeric-grounding benchmark. Committed
+  results are synthetic harness validations; LLM and real-market results are
+  pending.
+authors:
+  - given-names: "Siyan"
+    family-names: "Chen"
+repository-code: "https://github.com/SiyanChen929/marketdata-quant-suite"
+version: "0.1.0"
+keywords:
+  - quantitative finance
+  - large language models
+  - factor mining
+  - multiple testing
+  - point-in-time data
+  - LLM agents
+  - reproducibility

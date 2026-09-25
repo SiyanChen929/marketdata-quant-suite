@@ -9,18 +9,27 @@ permissions:
 
 jobs:
   test:
+    name: test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
             packages/quant-marketdata/pyproject.toml
             projects/quant-research-platform/pyproject.toml
             projects/equity-pairs-research/pyproject.toml
             projects/index-rebalance-event-study/pyproject.toml
+            projects/llm-factor-mining/pyproject.toml
+            projects/marketdata-agent/pyproject.toml
+      # The optional LLM extra is not installed: every test runs offline
+      # without the Anthropic SDK or an API key.
       - name: Install suite
         run: ./scripts/bootstrap.sh
       - name: Test all modules

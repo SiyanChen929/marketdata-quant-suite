@@ -25,6 +25,12 @@ projects:
   - id: index-rebalance-event-study
     role: event_driven_case_study
     price_input: confirmed
+  - id: llm-factor-mining
+    role: llm_guided_factor_discovery_research
+    price_input: confirmed
+  - id: marketdata-agent
+    role: governed_llm_copilot_research
+    price_input: confirmed
 
 policy:
   allow_secondary_price_providers: false

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import re
+import tomllib
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +11,14 @@ from quant_marketdata import DataContractError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PROJECT_PACKAGES = {
+    "quant-research-platform": "quant_system",
+    "equity-pairs-research": "equity_pairs",
+    "index-rebalance-event-study": "index_rebalance_event_study",
+    "llm-factor-mining": "llm_factor_mining",
+    "marketdata-agent": "marketdata_agent",
+}
+LLM_RESEARCH_PROJECTS = ("llm-factor-mining", "marketdata-agent")
 
 
 def _load_script(name: str):
@@ -20,26 +30,105 @@ def _load_script(name: str):
     return module
 
 
+def _pyproject(project: str) -> dict:
+    with (ROOT / "projects" / project / "pyproject.toml").open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def _requirement_names(requirements: list[str]) -> set[str]:
+    return {re.split(r"[\s\[<>=!~;]", item, maxsplit=1)[0].lower() for item in requirements}
+
+
 def test_expected_components_are_present() -> None:
-    expected = [
-        ROOT / "packages" / "quant-marketdata" / "src" / "quant_marketdata",
-        ROOT / "projects" / "quant-research-platform" / "src" / "quant_system",
-        ROOT / "projects" / "equity-pairs-research" / "src" / "equity_pairs",
-        ROOT / "projects" / "index-rebalance-event-study" / "src" / "index_rebalance_event_study",
+    expected = [ROOT / "packages" / "quant-marketdata" / "src" / "quant_marketdata"]
+    expected += [
+        ROOT / "projects" / project / "src" / package
+        for project, package in PROJECT_PACKAGES.items()
     ]
-    assert all(path.is_dir() for path in expected)
+    missing = [path for path in expected if not path.is_dir()]
+    assert missing == []
+
+
+def test_every_project_directory_is_a_registered_component() -> None:
+    on_disk = {path.parent.name for path in (ROOT / "projects").glob("*/pyproject.toml")}
+    assert on_disk == set(PROJECT_PACKAGES)
 
 
 def test_projects_declare_the_shared_marketdata_package() -> None:
-    projects = [
-        ROOT / "projects" / "quant-research-platform" / "pyproject.toml",
-        ROOT / "projects" / "equity-pairs-research" / "pyproject.toml",
-        ROOT / "projects" / "index-rebalance-event-study" / "pyproject.toml",
-    ]
-    for project in projects:
-        text = project.read_text(encoding="utf-8").lower()
-        assert "quant-marketdata" in text, project
+    for project in PROJECT_PACKAGES:
+        metadata = _pyproject(project)["project"]
+        assert "quant-marketdata" in _requirement_names(metadata["dependencies"]), project
+        text = (ROOT / "projects" / project / "pyproject.toml").read_text(encoding="utf-8").lower()
         assert "yfinance" not in text, project
+
+
+def test_suite_contract_lists_every_project_on_confirmed_prices() -> None:
+    text = (ROOT / "configs" / "suite.yml").read_text(encoding="utf-8")
+    entries = re.findall(
+        r"^  - id: (\S+)\n    role: (\S+)\n    price_input: (\S+)$", text, flags=re.MULTILINE
+    )
+    assert {project for project, _, _ in entries} == set(PROJECT_PACKAGES)
+    assert all(price_input == "confirmed" for _, _, price_input in entries)
+    roles = {project: role for project, role, _ in entries}
+    assert roles["llm-factor-mining"] == "llm_guided_factor_discovery_research"
+    assert roles["marketdata-agent"] == "governed_llm_copilot_research"
+
+
+def test_install_test_and_ci_scripts_cover_every_component() -> None:
+    bootstrap = (ROOT / "scripts" / "bootstrap.sh").read_text(encoding="utf-8")
+    runner = (ROOT / "scripts" / "test-all.sh").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    components = ["packages/quant-marketdata"] + [f"projects/{name}" for name in PROJECT_PACKAGES]
+    for component in components:
+        assert f'-e "{component}[dev]"' in bootstrap, component
+        assert f"$SUITE_ROOT/{component}/src" in runner, component
+        assert f"-p no:cacheprovider {component}/tests" in runner, component
+        assert f"{component}/pyproject.toml" in workflow, component
+    install_lines = [line for line in bootstrap.splitlines() if not line.lstrip().startswith("#")]
+    assert not any("llm]" in line for line in install_lines), "the LLM SDK extra must stay optional"
+
+
+def test_llm_sdk_is_an_optional_extra_of_the_llm_projects() -> None:
+    for project in LLM_RESEARCH_PROJECTS:
+        metadata = _pyproject(project)["project"]
+        assert "anthropic" not in _requirement_names(metadata["dependencies"]), project
+        assert "anthropic" in _requirement_names(metadata["optional-dependencies"]["llm"]), project
+        assert metadata["requires-python"] == ">=3.11", project
+
+
+def test_citation_metadata_names_the_repository() -> None:
+    text = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    assert re.search(r"^cff-version: 1\.2\.0$", text, flags=re.MULTILINE)
+    assert "repository-code: \"https://github.com/SiyanChen929/marketdata-quant-suite\"" in text
+    assert "doi:" not in text.lower()
+
+
+def test_documentation_links_resolve() -> None:
+    documents = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", *sorted((ROOT / "docs").glob("*.md"))]
+    broken = []
+    for document in documents:
+        text = document.read_text(encoding="utf-8")
+        for target in re.findall(r"\]\(([^)\s]+)\)", text):
+            if re.match(r"^(?:https?:|mailto:|#)", target):
+                continue
+            path = (document.parent / target.split("#", 1)[0]).resolve()
+            if not path.exists():
+                broken.append(f"{document.relative_to(ROOT)} -> {target}")
+    assert broken == []
+
+
+def test_readme_result_excerpts_are_verbatim_copies() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    blocks = re.findall(
+        r"<!-- verbatim: (\S+) -->\n(.*?)<!-- /verbatim -->", readme, flags=re.DOTALL
+    )
+    assert len(blocks) >= 2
+    for source, block in blocks:
+        committed = (ROOT / source).read_text(encoding="utf-8").splitlines()
+        rows = [line for line in block.splitlines() if line.strip()]
+        assert rows, source
+        missing = [line for line in rows if line not in committed]
+        assert missing == [], source
 
 
 def test_status_script_never_returns_the_token(monkeypatch, tmp_path) -> None:

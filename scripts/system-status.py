@@ -15,6 +15,8 @@ COMPONENTS = {
     "research_platform": ROOT / "projects" / "quant-research-platform",
     "equity_pairs": ROOT / "projects" / "equity-pairs-research",
     "index_event_study": ROOT / "projects" / "index-rebalance-event-study",
+    "llm_factor_mining": ROOT / "projects" / "llm-factor-mining",
+    "marketdata_agent": ROOT / "projects" / "marketdata-agent",
 }
 
 
