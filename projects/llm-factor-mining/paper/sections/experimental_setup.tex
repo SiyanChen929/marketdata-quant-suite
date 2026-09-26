@@ -57,7 +57,8 @@ three families:
     correlation idea behind Alpha\#2 of \citet{kakushadze2016alphas}, whose
     formula is in the reference library;
   \item \emph{drawn}: \code{\SynDrawnName}, \SynDrawnExpression{}, drawn at
-    random from the typed grammar by a procedure fixed before the draw. The
+    random from the typed grammar by a procedure fixed in code before the
+    draw was run (self-attested, not externally registered). The
     first candidate meeting four criteria was accepted: depth at least 3,
     complexity at most 8 and a time-series operator; well defined on a
     reference null market; mean rank correlation below $0.3$ in absolute
@@ -78,14 +79,18 @@ signals, \SynNoveltyLibraryFamily{} for the library-family signal and
 \SynNoveltyDrawn{} for the drawn one. Every planted signal (up to its sign,
 which the protocol chooses) has a non-zero sampling probability under the
 random-grammar baseline, and its components are on genetic programming's
-menus.
+menus; for the library-family signal this holds only since the window menu
+gained the value $1$ in the revision disclosed in
+Section~\ref{sec:limitations}.
 
 \paragraph{Grid and protocol.} The grid and protocol settings are:
 \begin{itemize}
   \item \SynSymbols{} fictional symbols and \SynSessions{} sessions;
   \item SNR $\in\{\SynSnrLow,\SynSnrHigh\}$ and market seeds $\{0,1,2\}$,
     plus \SynNullSeeds{} null markets (SNR $0$, seeds $0$ to $9$); the
-    proposer seed is the market seed plus $10{,}000$;
+    proposer seed is the market seed plus $10{,}000$ at every SNR level, so
+    the cells of one market seed share their proposal streams (common random
+    numbers; Section~\ref{sec:limitations});
   \item a budget of \SynBudget{} trials and batches of \SynBatch{};
   \item $\ell=h=1$, fractions $0.6/0.2/0.2$ and an embargo of 2 sessions;
   \item a formation screen (BH at $q=\SynFdrAlpha$ over behavioural
@@ -108,7 +113,10 @@ noise was \SynRealizedSnrLow{} on average at the low SNR level and
   \item \emph{Recall}: $|\bar\rho|\ge\SynRecoveryThreshold$ for any
     evaluated trial on the formation window, using every
     \SynRecallStride{}th formation date. Recall asks whether the proposer
-    ever found the signal, selected or not.
+    ever wrote a close copy of the planted expression, selected or not. It is
+    not evidence of detection: the null markets, where the same expressions
+    carry no return, show about the same recall
+    (Section~\ref{sec:results-synthetic}).
   \item \emph{True FDP}: the share of selected factors that are false by
     ground truth, i.e.\ whose oriented rank correlation with the planted
     composite (proportional to the true expected return) on the test window
@@ -116,8 +124,8 @@ noise was \SynRealizedSnrLow{} on average at the low SNR level and
     factor is false.
   \item \emph{Test non-significance rate}: the share of selected factors
     whose one-sided test IC is not significant under BH at \SynTestAlpha{}
-    within the selected set. It measures the power of the test window, not
-    falsity.
+    within the selected set ($p$-values against $t(n-1)$). It measures the
+    power of the test window, not falsity.
   \item Composite and mean per-factor test IC and ICIR, behavioural and
     structural novelty, the selection funnel (behavioural duplicates,
     degenerate trials, screen survivors, confirmed candidates) and, on null
@@ -195,7 +203,10 @@ listed in advance and counted in the study registry.
     a margin fixed in advance. It is declared underpowered with fewer than
     250 post-cutoff sessions.
   \item \textbf{H4.} Formation feedback improves search. It is tested on
-    synthetic recall and on validation-window ICIR only.
+    synthetic recovery and trials-to-first-recovery, and on recall only as a
+    contrast with null markets (planted minus null recall), since raw recall
+    is about as high where nothing is planted; on real data, on
+    validation-window ICIR only.
 \end{itemize}
 Every test is one-sided at level $0.05$; the equivalence test of H3 is a pair of one-sided tests.
 

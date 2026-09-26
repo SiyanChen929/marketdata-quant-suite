@@ -61,8 +61,9 @@ build the evaluation protocol around it (Section~\ref{sec:method}):
     future data.
   \item \emph{Search.} The search loop evaluates on a price panel truncated
     at the end of the formation window. The proposer receives only
-    formation-window statistics, through closed types that have no field for
-    anything else.
+    formation-window statistics, through closed types whose only free-text
+    fields hold the proposal's own text and a validator or fixed harness
+    message.
   \item \emph{The ledger.} Every processed proposal is written to a
     hash-chained ledger, including those that fail validation. A formation
     screen counts every budgeted trial and merges behaviourally identical
@@ -86,7 +87,8 @@ build the evaluation protocol around it (Section~\ref{sec:method}):
     tests.
   \item A planted-alpha synthetic benchmark with null markets, whose ground
     truth mixes textbook signals, a documented factor family and a signal
-    drawn at random by a pre-registered procedure; only the drawn signal
+    drawn at random by a procedure fixed in code before the draw was run
+    (self-attested, not externally registered); only the drawn signal
     speaks to search beyond prior knowledge. Results on it are reported for
     two baselines.
   \item \todo{An equal-budget comparison of LLM, random-grammar and

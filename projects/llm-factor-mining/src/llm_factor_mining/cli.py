@@ -276,6 +276,7 @@ def _metric(lag: int, horizon: int) -> MetricConfig:
 def _cmd_register(args: argparse.Namespace) -> int:
     from .protocol.registry import RegistryError, StudySpec, study_symbols
     from .protocol.splits import chronological_splits
+    from .search import SearchConfig, window_capacity_problems
 
     registry = _registry(args.registry)
     symbols = study_symbols(_csv(args.symbols))
@@ -294,6 +295,18 @@ def _cmd_register(args: argparse.Namespace) -> int:
         # only the trading calendar is used; no statistic of the bars is computed or printed
         calendar = store_loader(spec)(None).dates
         splits = chronological_splits(calendar, fractions=spec.fractions, lag=spec.lag, max_horizon=spec.max_horizon)
+        # refuse, before the windows are fixed for good, a study on which `search` could never select
+        problems = window_capacity_problems(
+            calendar,
+            splits,
+            SearchConfig(metric=_metric(spec.lag, spec.max_horizon)),
+            n_symbols=len(spec.symbols),
+        )
+        if problems:
+            raise SystemExit(
+                "not registered: these windows could never select a factor (use a longer date range or more "
+                "symbols): " + "; ".join(problems)
+            )
         study = registry.register_study(spec, splits)
     except RegistryError as exc:
         raise SystemExit(str(exc)) from exc
@@ -421,6 +434,11 @@ def _cmd_search(args: argparse.Namespace) -> int:
             "public timestamp), then run: llm-factor-mining reveal --run-dir "
             f"{run_dir} --commitment {result.commitment} --registry {args.registry}"
         )
+    if registry is not None:
+        # exploration evaluations are forking paths outside this run's ledger: report their count with it
+        payload["registry"] = _record_registry_summary(run_dir, registry, args.study, "registry_at_commit")
+    for warning in result.warnings():
+        print(f"warning: {warning}", file=sys.stderr)
     if result.reveal is not None:
         payload["test"] = {
             "composite": result.reveal.payload.get("composite"),
@@ -431,6 +449,18 @@ def _cmd_search(args: argparse.Namespace) -> int:
         }
     print(json.dumps(json_safe(payload), sort_keys=True))
     return 0 if not result.aborted else 3
+
+
+def _record_registry_summary(run_dir: Path, registry: Any, study: str, key: str) -> dict[str, Any]:
+    """Add the study's registry counts (explorations, commits, reveals) to the run's provenance.json."""
+
+    summary = json_safe(registry.summary(study))
+    path = run_dir / "provenance.json"
+    if path.exists():
+        provenance = json.loads(path.read_text(encoding="utf-8"))
+        provenance[key] = summary
+        write_json(path, provenance)
+    return summary
 
 
 def _cmd_reveal(args: argparse.Namespace) -> int:
@@ -453,6 +483,7 @@ def _cmd_reveal(args: argparse.Namespace) -> int:
     splits = splits_from_dict(record["splits"])
     meta = record["run_metadata"]["cli"]
     authorize = None
+    registry = None
     if meta["data"] == "store":
         registry = _registry(args.registry or meta.get("registry"))
         panel = store_loader(registry.require(meta["study"]).spec)(None)
@@ -482,8 +513,11 @@ def _cmd_reveal(args: argparse.Namespace) -> int:
     write_json(run_dir / "reveal.json", revealed.payload)
     provenance["reveal_ledger_head"] = ledger.head_hash
     provenance["ledger_head"] = ledger.head_hash
+    output: dict[str, Any] = {"reveal": revealed.payload, "ledger_head": ledger.head_hash}
+    if registry is not None:
+        provenance["registry_at_reveal"] = output["registry"] = json_safe(registry.summary(meta["study"]))
     write_json(run_dir / "provenance.json", provenance)
-    print(json.dumps(json_safe({"reveal": revealed.payload, "ledger_head": ledger.head_hash}), sort_keys=True))
+    print(json.dumps(json_safe(output), sort_keys=True))
     return 0
 
 
@@ -510,10 +544,25 @@ def benchmark_command_line(argv: Sequence[str]) -> str:
     return "python -m llm_factor_mining.cli " + " ".join(shlex.quote(part) for part in argv)
 
 
-def run_benchmark_from_args(args: argparse.Namespace, *, command: str) -> tuple[Path, Path, dict[str, Any]]:
-    from .benchmark.report import write_summary
-    from .benchmark.runner import BenchmarkConfig, run_benchmark
+def run_benchmark_from_args(args: argparse.Namespace, *, command: str) -> tuple[Path, Path, dict[str, Any], Path]:
+    """Run the benchmark; returns ``(summary.json, summary.md, summary, per-run ledger directory)``.
 
+    An explicitly requested LLM backend that cannot run stops the command
+    before anything is run or written (it would otherwise re-run every
+    baseline and overwrite the summary without the LLM arm).  Per-run ledgers
+    go to a fresh subdirectory of ``--runs-dir`` for every invocation.
+    """
+
+    from .benchmark.report import write_summary
+    from .benchmark.runner import BenchmarkConfig, fresh_runs_dir, run_benchmark
+
+    if args.backend == "anthropic" and not credentials_available():
+        raise SystemExit(
+            "--backend anthropic needs credentials (ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN); none found. "
+            "Nothing was run and no summary was written."
+        )
+    if args.backend == "replay" and not (args.replay_file and Path(args.replay_file).exists()):
+        raise SystemExit("--backend replay needs an existing --replay-file. Nothing was run and no summary was written.")
     arms = _csv(args.proposers)
     if args.backend is not None and not any(arm.partition("@")[0] == "llm" for arm in arms):
         arms.append("llm")
@@ -531,25 +580,31 @@ def run_benchmark_from_args(args: argparse.Namespace, *, command: str) -> tuple[
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     factory, status = benchmark_llm_factory(args)
+    runs_path = fresh_runs_dir(args.runs_dir)
+    print(f"per-run ledgers: {runs_path}", file=sys.stderr)
     summary = run_benchmark(
         config,
         llm_factory=factory,
         llm_status=status,
-        runs_dir=args.runs_dir,
+        runs_dir=runs_path,
         progress=lambda message: print(message, file=sys.stderr),
     )
     json_path, md_path = write_summary(summary, args.out, command=command)
-    return json_path, md_path, summary
+    return json_path, md_path, summary, runs_path
 
 
 def _cmd_benchmark(args: argparse.Namespace, argv: Sequence[str]) -> int:
-    json_path, md_path, _ = run_benchmark_from_args(args, command=benchmark_command_line(argv))
-    print(json.dumps({"summary_json": str(json_path), "summary_md": str(md_path)}))
+    json_path, md_path, _, runs_path = run_benchmark_from_args(args, command=benchmark_command_line(argv))
+    print(json.dumps({"summary_json": str(json_path), "summary_md": str(md_path), "runs_dir": str(runs_path)}))
     return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from quant_marketdata import QuantMarketDataError
+
+    from .data import PanelError
     from .protocol.registry import RegistryError
+    from .protocol.splits import SplitError
 
     raw = list(sys.argv[1:] if argv is None else argv)
     args = build_parser().parse_args(raw)
@@ -557,6 +612,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _dispatch(args, raw)
     except RegistryError as exc:
         raise SystemExit(str(exc)) from exc
+    except (SplitError, PanelError, FileNotFoundError, FileExistsError, QuantMarketDataError) as exc:
+        # usage and data problems end with one line, not a traceback
+        raise SystemExit(f"error: {exc}") from exc
 
 
 def _dispatch(args: argparse.Namespace, raw: Sequence[str]) -> int:

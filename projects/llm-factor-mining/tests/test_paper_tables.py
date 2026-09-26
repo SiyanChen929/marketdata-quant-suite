@@ -24,6 +24,7 @@ RESULTS = PROJECT / "results" / "synthetic_benchmark"
 HEADLINE = "## Headline: planted markets (mean ± sd across complete runs)"
 RECOVERY = "## Recovery of each planted signal (complete runs)"
 NULL = "## Null markets (snr = 0): false selections"
+NULL_RECALL = "## Null markets (snr = 0): recall of the planted expressions"
 PAPER = PROJECT / "paper"
 # entries of the approved reference list that are flagged for metadata verification
 VERIFY_KEYS = frozenset({"bailey2017pbo", "glasserman2023lookahead", "wang2023alphagpt", "yu2023alphagen"})
@@ -111,9 +112,10 @@ def test_docs_quote_the_committed_tables_verbatim() -> None:
     headline = _markdown_table(markdown, HEADLINE)
     recovery = _markdown_table(markdown, RECOVERY)
     null = _markdown_table(markdown, NULL)
+    null_recall = _markdown_table(markdown, NULL_RECALL)
     readme = (PROJECT / "README.md").read_text(encoding="utf-8")
     card = (PROJECT / "docs" / "result-card.md").read_text(encoding="utf-8")
-    for table in (headline, recovery, null):
+    for table in (headline, recovery, null, null_recall):
         assert "\n".join(table) in readme
         assert "\n".join(table) in card
     for text in (readme, card, markdown):

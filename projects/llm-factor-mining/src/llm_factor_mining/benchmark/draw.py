@@ -1,4 +1,4 @@
-"""Pre-registered draw of the benchmark's "drawn" planted signal.
+"""Draw of the benchmark's "drawn" planted signal (procedure fixed in code before the draw).
 
 The textbook planted signals favour any proposer that knows the factor
 literature, and the volume-return signal belongs to a documented family
@@ -67,7 +67,7 @@ CONVERGENCE_SNRS = (0.05, 0.15)
 
 
 def candidate_tree(k: int) -> Node:
-    """Candidate ``k`` of the pre-registered draw."""
+    """Candidate ``k`` of the draw."""
 
     rng = np.random.default_rng([DRAW_SEED, int(k)])
     tree, _ = random_valid_tree(rng, GrammarConfig(), DSLLimits())
@@ -153,7 +153,7 @@ def draw_planted_signal(
     max_draws: int = 1000,
     check_convergence: bool = True,
 ) -> dict[str, Any]:
-    """Run the pre-registered draw; returns the accepted candidate and every rejection."""
+    """Run the draw; returns the accepted candidate and every rejection."""
 
     reference = simulate_market(
         SyntheticMarketConfig(snr=0.0, seed=REFERENCE_SEED, planted=fixed_planted)

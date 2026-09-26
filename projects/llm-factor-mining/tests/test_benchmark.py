@@ -234,7 +234,7 @@ def test_benchmark_llm_arm_with_fake_backend(tmp_path) -> None:
 
     config = BenchmarkConfig(
         seeds=(0,), snr_levels=(0.4,), null_seeds=(), n_symbols=20, n_dates=240, budget=6, batch_size=4,
-        proposers=("random",),
+        proposers=("random",), min_ic_dates=30,
     )
     backends: list[FakeBackend] = []
     proposers: list[LLMProposer] = []
@@ -255,3 +255,77 @@ def test_benchmark_llm_arm_with_fake_backend(tmp_path) -> None:
     # each market cell gets its own request tag, and prompts are checked against the panel's symbols
     assert backends[0].calls[0]["tag"] == "replicate=10000;snr=0.4,market_seed=0"
     assert proposers[0].forbidden_tokens == tuple(f"SYN{index:03d}" for index in range(20))
+
+
+def test_benchmark_refuses_used_run_directories_before_running(tmp_path) -> None:
+    from datetime import datetime, timezone
+
+    from llm_factor_mining.benchmark.runner import fresh_runs_dir, run_directory
+
+    config = BenchmarkConfig(
+        seeds=(0,), snr_levels=(0.4,), null_seeds=(1,), n_symbols=20, n_dates=240, budget=4, batch_size=4,
+        proposers=("random",), min_ic_dates=30,
+    )
+    used = run_directory(tmp_path, 0.0, 1, "random")
+    used.mkdir(parents=True)
+    (used / "ledger.jsonl").write_text("")
+    with pytest.raises(FileExistsError, match="already hold ledgers"):
+        run_benchmark(config, runs_dir=tmp_path)
+    assert not run_directory(tmp_path, 0.4, 0, "random").exists()  # refused before the first cell ran
+    moment = datetime(2026, 9, 25, 12, 0, 0, tzinfo=timezone.utc)
+    first, second = fresh_runs_dir(tmp_path / "r", now=moment), fresh_runs_dir(tmp_path / "r", now=moment)
+    assert (first.name, second.name) == ("20260925T120000Z", "20260925T120000Z-2")
+
+
+def test_compute_matched_arms_can_use_their_whole_budget() -> None:
+    config = BenchmarkConfig(proposers=("random", "random@10000"))
+    for _, _, budget in config.arms():
+        search = config.search_config(budget)
+        assert search.max_rounds * search.batch_size >= 10 * budget
+    assert config.search_config(200).max_rounds == 100  # the committed runs' setting is unchanged
+
+
+def test_test_level_p_values_use_t_with_n_minus_1_degrees_of_freedom(monkeypatch) -> None:
+    import llm_factor_mining.benchmark.runner as runner
+    from llm_factor_mining.search import nw_p_value
+
+    calls = []
+
+    def spy(t_stat, n, *, alternative="two-sided"):
+        calls.append((t_stat, n, alternative))
+        return nw_p_value(t_stat, n, alternative=alternative)
+
+    monkeypatch.setattr(runner, "nw_p_value", spy)
+    market = small_market(snr=0.05, seed=2)
+    out = runner.oracle_scores(market, small_splits(market.panel), MetricConfig(), test_alpha=0.05)
+    names = list(market.planted_signals)
+    assert calls == [(out[name]["t_nw"], out[name]["n_ic_dates"], "greater") for name in names]
+    assert all(n > 1 for _, n, _ in calls)
+
+
+def test_draw_script_verifies_by_default_and_writes_only_with_out(tmp_path, monkeypatch, capsys) -> None:
+    import copy
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[1] / "scripts" / "draw_planted_signal.py"
+    spec = importlib.util.spec_from_file_location("draw_planted_signal", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
+    committed = module.COMMITTED.read_bytes()
+    record = json.loads(committed)
+    record.pop("note")
+    monkeypatch.setattr(module, "draw_planted_signal", lambda fixed: copy.deepcopy(record))  # skip the 20 s draw
+    assert module.main([]) == 0 and "nothing written" in capsys.readouterr().out
+    assert module.COMMITTED.read_bytes() == committed
+    target = tmp_path / "draw.json"
+    assert module.main(["--out", str(target)]) == 0 and target.read_bytes() == committed
+    record["rejected"] = record["rejected"][1:]
+    assert module.main([]) == 1 and module.COMMITTED.read_bytes() == committed

@@ -74,8 +74,9 @@ class PlantedFactor:
 # "library_family" - a documented idea (the negative correlation of volume
 # changes with returns behind Kakushadze (2016) Alpha#2, whose formula is in
 # the reference library as ``volume_change_vs_intraday_return``); "drawn" -
-# drawn at random from the typed grammar by the pre-registered procedure of
-# :mod:`llm_factor_mining.benchmark.draw`.
+# drawn at random from the typed grammar by the procedure of
+# :mod:`llm_factor_mining.benchmark.draw`, fixed in code before the draw was run
+# (self-attested; not externally registered).
 FIXED_PLANTED: tuple[PlantedFactor, ...] = (
     PlantedFactor("reversal_5", "-ts_mean(returns, 5)", 1.0, "textbook"),
     PlantedFactor("abnormal_volume_20", "volume / ts_mean(volume, 20)", 1.0, "textbook"),
@@ -83,7 +84,7 @@ FIXED_PLANTED: tuple[PlantedFactor, ...] = (
         "volume_return_corr_10", "-ts_corr(returns, delta(log(volume), 1), 10)", 1.0, "library_family"
     ),
 )
-# Candidate k = 40 of the pre-registered draw (results/planted_signal_draw.json):
+# Candidate k = 40 of the draw (results/planted_signal_draw.json):
 # the first of 41 candidates meeting criteria C1-C4 of benchmark.draw.
 DRAWN_PLANTED = PlantedFactor("drawn_40", "delta(ts_cov(ts_argmin(low,20),cs_demean(open),5),1)", 1.0, "drawn")
 DEFAULT_PLANTED: tuple[PlantedFactor, ...] = (*FIXED_PLANTED, DRAWN_PLANTED)

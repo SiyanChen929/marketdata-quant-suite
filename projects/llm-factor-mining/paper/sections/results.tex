@@ -44,7 +44,8 @@ test window. Synthetic data only.}
 \caption{Recovery of each planted signal: runs in which a \emph{selected}
 factor matched it on the test window ($\bar\rho\ge\SynRecoveryThreshold$),
 and runs in which \emph{any evaluated trial} matched it on the formation
-window ($|\bar\rho|\ge\SynRecoveryThreshold$). Synthetic data only.}
+window ($|\bar\rho|\ge\SynRecoveryThreshold$; ``found'', i.e.\ recall, which
+is about as frequent on the null markets). Synthetic data only.}
 \label{tab:synthetic-recovery}
 \resizebox{\textwidth}{!}{\input{tables/synthetic_recovery}}
 \end{table}
@@ -68,7 +69,7 @@ share of planted signals that pass BH at \SynTestAlpha{} on the test window
 \resizebox{\textwidth}{!}{\input{tables/synthetic_oracle}}
 \end{table}
 
-We draw five observations from the tables. With \SynSeeds{} seeds per planted
+We draw six observations from the tables. With \SynSeeds{} seeds per planted
 cell and \SynNullSeeds{} null seeds, we read them as descriptions of the
 harness and the baselines, not as statistical claims.
 
@@ -125,10 +126,23 @@ SNR \SynSnrHigh{} have structural novelty
 \SynMeanSd{0.15}{random}{structural_novelty_mean} (random), which would read
 as new structure. Their behavioural novelty is
 \SynMeanSd{0.15}{evolutionary}{behavioural_novelty_mean} and
-\SynMeanSd{0.15}{random}{behavioural_novelty_mean}: their values are close to
-those of library factors, as expected for re-expressions of the textbook
-signals. Rediscovery must be measured on values, which is how the LLM study
-will report it.
+\SynMeanSd{0.15}{random}{behavioural_novelty_mean}: their values are
+substantially correlated with those of library factors (behavioural novelty
+is one minus the largest such correlation), although only a few are exact
+re-spellings. Rediscovery must be measured on values, which is how the LLM
+study will report it.
+
+\paragraph{Recall does not measure detection.} A planted expression counts as
+``found'' when any evaluated trial matches it on the formation window. On the
+null markets, where the same expressions carry no return, recall was
+\SynNullMeanSd{evolutionary}{recall_rate} for GP and
+\SynNullMeanSd{random}{recall_rate} for random search, against
+\SynMeanSd{0.15}{evolutionary}{recall_rate} and
+\SynMeanSd{0.15}{random}{recall_rate} on the planted markets at SNR
+\SynSnrHigh{}. Recall therefore records that a proposer writes such
+expressions (close variants of the short-reversal and abnormal-volume
+signals are easy to reach in the grammar), not that it detected a signal; H4 uses recall only as a contrast
+with null markets.
 
 \paragraph{Syntactic deduplication undercounts repeated hypotheses.} Genetic
 programming produced \SynMeanSd{0.15}{evolutionary}{n_behaviour_duplicates}

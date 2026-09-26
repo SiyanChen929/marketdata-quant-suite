@@ -20,6 +20,7 @@ from quant_marketdata import CANONICAL_COLUMNS, MarketDataStore, normalize_bars
 
 PANEL_FIELDS: tuple[str, ...] = ("open", "high", "low", "close", "volume")
 CONTENT_HASH_NAMESPACE = "llm-factor-mining/panel-v1"
+VALUES_HASH_NAMESPACE = "llm-factor-mining/panel-values-v1"
 
 
 class PanelError(ValueError):
@@ -191,6 +192,28 @@ def panel_content_hash(fields: Mapping[str, pd.DataFrame], sources: Sequence[str
     return digest.hexdigest()
 
 
+def panel_values_sha256(panel: Panel) -> str:
+    """SHA-256 over the panel's dates, symbols and float64 field values only.
+
+    Unlike :attr:`Panel.content_sha256` it ignores the ``sources`` labels, so a
+    panel cut from a longer load (:func:`~llm_factor_mining.protocol.splits.truncate_panel`
+    keeps the parent's source set) and a direct load of the shorter range have
+    equal values hashes whenever their bars agree, even when a bar source
+    appears only later in the sample (for example a vendor switch).
+    """
+
+    close = panel.close
+    digest = hashlib.sha256()
+    digest.update(VALUES_HASH_NAMESPACE.encode("utf-8"))
+    digest.update(np.asarray(close.index.asi8, dtype="<i8").tobytes())
+    digest.update("\x1f".join(str(symbol) for symbol in close.columns).encode("utf-8"))
+    for name in PANEL_FIELDS:
+        values = np.ascontiguousarray(panel.field(name).to_numpy(dtype="float64"), dtype="<f8")
+        digest.update(name.encode("utf-8"))
+        digest.update(values.tobytes())
+    return digest.hexdigest()
+
+
 def align_symbols(panel: Panel, symbols: Sequence[str]) -> Panel:
     """Reindex a panel's columns to ``symbols`` (absent ones become all-NaN) and rehash.
 
@@ -257,6 +280,7 @@ __all__ = [
     "load_confirmed_panel",
     "panel_content_hash",
     "panel_from_bars",
+    "panel_values_sha256",
     "recompute_content_sha256",
     "verify_panel_hash",
 ]

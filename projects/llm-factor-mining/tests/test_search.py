@@ -363,3 +363,138 @@ def test_formation_dates_used_for_signatures_are_the_ic_dates() -> None:
     formation = truncate_panel(market.panel, splits.formation.end)
     dates = embargoed_signal_dates(formation.dates, splits.formation, lag=1, horizon=1)
     assert dates[-1] < splits.formation.end and len(dates) == len(formation.dates) - 2
+
+
+def test_a_bar_source_that_appears_later_is_not_a_change_of_the_data(tmp_path) -> None:
+    # regression: a vendor switch inside the test (or validation) window made the phase-prefix check
+    # fail on unchanged data, because the longer load lists one more source label
+    from llm_factor_mining.data import align_symbols, panel_values_sha256
+
+    market = small_market()
+    splits = small_splits(market.panel)
+    for switch in (splits.test.start, splits.validation.start):
+        bars = market.bars.copy()
+        bars["source"] = "vendor_a"
+        bars.loc[pd.to_datetime(bars["date"]) >= switch, "source"] = "vendor_b"
+        symbols = sorted(bars["symbol"].unique())
+
+        def load(end, bars=bars, symbols=symbols):  # like cli.store_loader: read bars up to ``end``
+            part = bars if end is None else bars[pd.to_datetime(bars["date"]) <= pd.Timestamp(end)]
+            return align_symbols(panel_from_bars(part.reset_index(drop=True)), symbols)
+
+        shorter = load(splits.formation.end)
+        longer = truncate_panel(load(None), splits.formation.end)
+        assert shorter.sources == ("vendor_a",) and longer.sources == ("vendor_a", "vendor_b")
+        assert panel_values_sha256(shorter) == panel_values_sha256(longer)
+        run_dir = tmp_path / f"run-{switch.date()}"
+        result = run_search(
+            ScriptedProposer([["-ts_mean(returns, 5)", "high"]]), load, splits, tiny_search_config(budget=2),
+            run_dir=run_dir, reveal=False,
+        )
+        assert result.commitment is not None and (run_dir / "selected.json").is_file()
+        assert result.data_sha256 == load(None).content_sha256  # the committed hash still covers the sources
+
+
+def test_windows_too_short_for_a_p_value_are_refused_before_the_run_starts(tmp_path) -> None:
+    from llm_factor_mining.protocol.splits import SplitError
+    from llm_factor_mining.search import window_capacity_problems
+
+    market = small_market()  # 260 sessions: validation and test windows hold about 50 scorable dates
+    splits = small_splits(market.panel)
+    config = tiny_search_config(min_ic_dates=100)
+    problems = window_capacity_problems(market.panel.dates, splits, config, n_symbols=len(market.panel.symbols))
+    assert [problem.split(" window")[0] for problem in problems] == ["the validation", "the test"]
+    with pytest.raises(SplitError, match="cannot select anything"):
+        run_search(RandomGrammarProposer(0), market.panel, splits, config, run_dir=tmp_path / "run")
+    assert not (tmp_path / "run").exists()  # nothing was spent or written
+    # too few names for a rank IC on any date
+    narrow = window_capacity_problems(market.panel.dates, splits, tiny_search_config(), n_symbols=6)
+    assert narrow and "6 symbols" in narrow[-1]
+    assert window_capacity_problems(market.panel.dates, splits, tiny_search_config(), n_symbols=24) == []
+    # a loader is checked on the formation window it has loaded (the registry checks the rest)
+    with pytest.raises(SplitError, match="formation window"):
+        run_search(
+            RandomGrammarProposer(0), lambda end: truncate_panel(market.panel, end) if end is not None else market.panel,
+            splits, tiny_search_config(min_ic_dates=200),
+        )
+
+
+def test_degenerate_validation_is_reported_as_a_warning() -> None:
+    market = small_market()
+    splits = small_splits(market.panel)
+    # most names have no bars during the first 35 validation sessions: rank ICs are undefined there,
+    # so the screened candidates have too few validation IC dates (the formation window is intact)
+    dates = pd.to_datetime(market.bars["date"])
+    validation = market.panel.dates[market.panel.dates >= splits.validation.start][:35]
+    keep = ~(dates.isin(validation) & ~market.bars["symbol"].isin(market.panel.symbols[:4]))
+    panel = panel_from_bars(market.bars.loc[keep].reset_index(drop=True))
+    result = run_search(
+        ScriptedProposer([["-ts_mean(returns, 5)", "volume / ts_mean(volume, 20)"]]), panel, splits,
+        tiny_search_config(budget=2),
+    )
+    assert result.funnel["n_screen_survivors"] >= 1
+    assert result.funnel["n_rejected_degenerate_validation"] == result.funnel["n_screen_survivors"]
+    assert result.frozen.factors == ()
+    assert any("never tested on validation" in warning for warning in result.summary()["warnings"])
+
+
+def test_round_cap_scales_with_the_budget() -> None:
+    from llm_factor_mining.search import default_max_rounds
+
+    assert SearchConfig().max_rounds == 100  # the default arm: 200 trials in batches of 20
+    assert SearchConfig(budget=10_000, batch_size=20).max_rounds == 5_000
+    assert SearchConfig(budget=10_000, max_rounds=7).max_rounds == 7  # an explicit cap is kept
+    assert default_max_rounds(150, 1) == 1_500
+    config = SearchConfig(budget=10_000, batch_size=20)
+    assert SearchConfig.from_dict(config.to_dict()) == config
+    # 120 trials in batches of 1 would have hit a fixed 100-round cap
+    market = small_market()
+    result = run_search(
+        RandomGrammarProposer(4), market.panel, small_splits(market.panel), tiny_search_config(budget=120, batch_size=1),
+        reveal=False,
+    )
+    assert result.complete and result.n_trials == 120 and result.n_rounds > 100
+
+
+def test_proposers_never_see_date_counts_or_raw_exception_text(monkeypatch) -> None:
+    import llm_factor_mining.search as search_module
+    from llm_factor_mining.search import DEGENERATE_FEEDBACK
+
+    market = small_market()
+    splits = small_splits(market.panel)
+    formation = truncate_panel(market.panel, splits.formation.end)
+    n_scorable = len(embargoed_signal_dates(formation.dates, splits.formation, lag=1, horizon=1))
+    responses = [
+        {"proposals": [{"expression": "delay(close, 120)", "rationale": "r", "economic_mechanism": "m"}]},
+        {"proposals": [{"expression": "close", "rationale": "r", "economic_mechanism": "m"}]},
+    ]
+    backend = FakeBackend(responses)
+    result = run_search(
+        LLMProposer(backend, forbidden_tokens=market.panel.symbols), market.panel, splits,
+        tiny_search_config(budget=2, batch_size=1, min_ic_dates=40, min_ic_fraction=0.9),
+    )
+    degenerate = result.trials[0]
+    assert degenerate.status == "degenerate" and str(n_scorable) in degenerate.message  # the ledger keeps counts
+    lines = [line for line in backend.calls[1]["user"].splitlines() if "delay(close,120)" in line]
+    assert lines == [f"- delay(close,120) -> DEGENERATE: {DEGENERATE_FEEDBACK}"]
+    assert not any(char.isdigit() for char in DEGENERATE_FEEDBACK)
+
+    class Failing(search_module.Evaluator):
+        def evaluate(self, node):
+            if "low" in str(node):
+                raise ValueError(f"operands could not be broadcast together with shapes ({n_scorable},24)")
+            return super().evaluate(node)
+
+    monkeypatch.setattr(search_module, "Evaluator", Failing)
+    backend = FakeBackend(
+        [
+            {"proposals": [{"expression": "low", "rationale": "r", "economic_mechanism": "m"}]},
+            {"proposals": [{"expression": "close", "rationale": "r", "economic_mechanism": "m"}]},
+        ]
+    )
+    result = run_search(
+        LLMProposer(backend), market.panel, splits, tiny_search_config(budget=2, batch_size=1), reveal=False
+    )
+    assert result.trials[0].status == "error" and str(n_scorable) in result.trials[0].message
+    lines = [line for line in backend.calls[1]["user"].splitlines() if line.startswith("- low ->")]
+    assert lines == ["- low -> EVAL_ERROR: evaluation failed (ValueError)"]

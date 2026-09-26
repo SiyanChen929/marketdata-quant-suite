@@ -12,7 +12,8 @@ benchmark. Part B is a blank card for real-data runs.
 > **SYNTHETIC DATA - NOT EVIDENCE ABOUT REAL MARKETS.** This card describes
 > a check of the software harness (evidence level 2 of the suite's
 > governance ladder). The prices are simulated, the planted signals were
-> chosen by the authors (one of them by a pre-registered random draw), and
+> chosen by the authors (one of them by a random draw whose procedure was
+> fixed in code beforehand; self-attested, not externally registered), and
 > the LLM arm was **not run**. No number on this card says anything about
 > any factor's performance in real markets.
 
@@ -22,7 +23,9 @@ are copied from `summary.md` verbatim), and `results/planted_signal_draw.json`.
 They were produced on 2026-09-25 by
 `python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py`; a
 rerun of four of its runs with a different `PYTHONHASHSEED` reproduced their
-ledger heads and every scored field.
+ledger heads and every scored field, and a full re-run on 2026-09-26 with the
+current code reproduced every field of `summary.json` except the timings and
+the recorded command line.
 
 ### Hypothesis and economic mechanism
 
@@ -39,9 +42,11 @@ ledger heads and every scored field.
     (library family: the idea behind Kakushadze's Alpha#2, whose formula is
     in the reference library);
   - `drawn_40`: `delta(ts_cov(ts_argmin(low,20),cs_demean(open),5),1)`
-    (drawn: candidate 40 of the pre-registered random draw, the first to meet
-    its criteria; 40 earlier candidates were rejected, each with recorded
-    reasons).
+    (drawn: candidate 40 of a random draw from the typed grammar, the first
+    to meet the draw's four pre-set criteria; 40 earlier candidates were
+    rejected, each with recorded reasons. The procedure was fixed in code,
+    `benchmark/draw.py`, before the draw was run; this is self-attested and
+    not an external registration).
 
   They are equally weighted and each enters as a per-date z-score.
 
@@ -103,6 +108,11 @@ are identical for all sixteen markets.
   runs. Null markets: snr = 0 × seeds 0 to 9, 20 runs. Realized SNR
   (dispersion ratio): 0.0480 to 0.0485 at the nominal 0.05 level, 0.1420 to
   0.1430 at 0.15.
+- **Shared proposal streams.** The proposer seed is 10000 + market seed at
+  every SNR level. The feedback-free random arm therefore evaluates the same
+  200 expressions on the SNR 0.05, SNR 0.15 and null market of each seed 0 to
+  2, and GP starts from the same first batch (common random numbers). These
+  cells are not independent samples of the proposer.
 - **Ablations.** None run.
 
 Headline tables, copied verbatim from `results/synthetic_benchmark/summary.md`:
@@ -166,8 +176,21 @@ signals could be detected, not to be realistic.
 - **True FDP vs test non-significance.** Every selected factor in every run
   had an oriented rank correlation of at least 0.1 with the planted composite
   (true FDP 0.00). The test non-significance rate (0.50 for the single GP
-  run at SNR 0.05, 0.13 ± 0.12 for random at 0.15) reflects the power of a
-  148-date test window, not false discoveries.
+  run at SNR 0.05, 0.13 ± 0.12 for random at 0.15; p-values against
+  t(n − 1)) reflects the power of a 148-date test window, not false
+  discoveries.
+- **Recall is not detection.** On the null markets, where nothing is
+  planted, recall was 0.42 ± 0.12 (GP) and 0.47 ± 0.08 (random), against
+  0.42 to 0.50 on the planted markets: `reversal_5` was "found" in 10/10 null
+  runs of both arms and `abnormal_volume_20` in 7/10 (GP) and 9/10 (random).
+  "Found" means that a proposer wrote a close copy of the expression, not that
+  search detected a signal. Copied from `summary.md`:
+
+| arm | complete runs | recall | reversal_5 | abnormal_volume_20 | volume_return_corr_10 | drawn_40 |
+|---|---|---|---|---|---|---|
+| evolutionary | 10/10 | 0.42 ± 0.12 | 10/10 found | 7/10 found | 0/10 found | 0/10 found |
+| random | 10/10 | 0.47 ± 0.08 | 10/10 found | 9/10 found | 0/10 found | 0/10 found |
+
 - **Failure: the harder planted signals.** `volume_return_corr_10` and
   `drawn_40` were never selected and no evaluated trial matched either at
   |ρ| ≥ 0.7 (0/3 found in every cell), although both are in the baselines'
@@ -178,8 +201,11 @@ signals could be detected, not to be realistic.
   a budget of 200 trials only.
 - **Rediscovery.** Behavioural novelty of the selected factors was
   0.27 ± 0.07 (GP) and 0.35 ± 0.08 (random) at SNR 0.15, while structural
-  novelty was 0.85 ± 0.02 and 0.82 ± 0.05: the selected factors are mostly
-  re-spellings of library-like signals.
+  novelty was 0.85 ± 0.02 and 0.82 ± 0.05. The selected factors look new in
+  syntax but are mostly substantially correlated with a library factor in
+  values: at SNR 0.15 the median behavioural novelty of the 30 selected
+  factors was 0.36 (a maximum |ρ| of about 0.64 with the nearest library
+  entry), and 4 of them were near re-spellings (below 0.1).
 - **Duplicates and degenerate trials.** Per run, 12 to 61 evaluated trials
   repeated an earlier trial's per-date ranks, and 5 to 20 trials had too few
   IC dates (funnel table in `summary.md`). Both are counted in the family

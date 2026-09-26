@@ -14,6 +14,7 @@ from ..jsonutil import write_json
 HEADLINE_HEADING = "## Headline: planted markets (mean ± sd across complete runs)"
 RECOVERY_HEADING = "## Recovery of each planted signal (complete runs)"
 NULL_HEADING = "## Null markets (snr = 0): false selections"
+NULL_RECALL_HEADING = "## Null markets (snr = 0): recall of the planted expressions"
 LONG_SHORT_HEADING = "## Composite long-short on the test window (synthetic)"
 
 
@@ -155,7 +156,10 @@ def render_markdown(summary: Mapping[str, Any], *, command: str) -> str:
         f"{', '.join(_fmt(value, 2) for value in config['snr_levels'])} with market seeds "
         f"{', '.join(str(seed) for seed in config['seeds'])}; null markets (snr = 0) with seeds "
         f"{', '.join(str(seed) for seed in config['null_seeds'])}. Proposer seed = "
-        f"{summary['proposer_seed_offset']} + market seed.",
+        f"{summary['proposer_seed_offset']} + market seed, whatever the SNR: for market seed k the "
+        "feedback-free random arm evaluates the same expression stream on the planted and null markets of "
+        "seed k, and genetic programming starts from the same first batch (common random numbers), so "
+        "these cells are not independent samples of the proposer.",
         f"- Splits: formation / validation / test fractions {config['fractions']}, embargo "
         f"= lag + horizon sessions; execution lag {config['metric']['lag']}, horizon "
         f"{config['metric']['horizon']}.",
@@ -170,12 +174,15 @@ def render_markdown(summary: Mapping[str, Any], *, command: str) -> str:
         f"|rho| < {config['max_abs_corr']}; top {config['top_k']}; one sealed test reveal.",
         f"- Recovery: a planted signal is recovered if a selected (oriented) factor's test-window values "
         f"have mean cross-sectional rank correlation rho >= {config['recovery_threshold']} with it. "
-        "Recall applies |rho| to every evaluated trial on the formation window.",
+        "Recall (\"found\") applies |rho| to every evaluated trial on the formation window: it says that the "
+        "proposer produced a close copy of a planted expression, not that search detected a signal, and it is "
+        "about as high on null markets, where nothing is planted (see the null-market recall table).",
         f"- True FDP: share of selected factors whose oriented rank correlation with the planted "
         f"composite (the true expected-return signal) on the test window is below "
         f"{config['true_discovery_threshold']}; on null markets every selected factor is false.",
         f"- Test non-significance rate: share of selected factors whose one-sided test IC fails BH at "
-        f"{config['test_alpha']} within the selected set. It measures test power, not falsity.",
+        f"{config['test_alpha']} within the selected set (p-values against t(n - 1)). It measures test "
+        "power, not falsity.",
         "- Behavioural novelty: 1 - max |mean per-date rank correlation| of a selected factor with every "
         "reference-library entry on the formation window (value-based; 0 = a re-spelled library factor). "
         "Structural novelty: 1 - max subtree Jaccard similarity with the library (syntax only; secondary).",
@@ -220,10 +227,30 @@ def render_markdown(summary: Mapping[str, Any], *, command: str) -> str:
     lines += _table(NULL_HEADER, null_rows(summary))
     lines += [
         "",
+        NULL_RECALL_HEADING,
+        "",
+        "Recall on the null markets, where the planted expressions carry no return: a high value here shows "
+        "that recall measures whether a proposer writes such expressions, not whether it detects a signal.",
+        "",
+    ]
+    null_recall_rows = []
+    for row in summary.get("null_aggregate", []):
+        n = row["n_complete"]
+        null_recall_rows.append(
+            [
+                row["arm"],
+                f"{n}/{row['n_runs']}",
+                _mean_sd(row["metrics"]["recall_rate"], 2),
+                *(f"{row['recalled_counts'].get(item['name'], 0)}/{n} found" for item in planted),
+            ]
+        )
+    lines += _table(("arm", "complete runs", "recall", *(item["name"] for item in planted)), null_recall_rows)
+    lines += [
+        "",
         "## Oracle reference (planted signals scored on the test window)",
         "",
         "Power = share of planted signals whose one-sided test IC passes BH at "
-        f"{config['test_alpha']} within the planted set.",
+        f"{config['test_alpha']} within the planted set (p-values against t(n - 1)).",
         "",
     ]
     oracle_rows = []
@@ -325,9 +352,9 @@ def render_markdown(summary: Mapping[str, Any], *, command: str) -> str:
         "## Caveats",
         "",
         "- Synthetic data: the data-generating process, the planted signals and the SNR levels were "
-        "chosen by the authors of this benchmark (the `drawn` signal by a pre-registered random draw, "
-        "see `results/planted_signal_draw.json`). A proposer's ranking here need not transfer to real "
-        "markets.",
+        "chosen by the authors of this benchmark (the `drawn` signal by a random draw whose procedure was "
+        "fixed in code before it was run - self-attested, not externally registered; see "
+        "`results/planted_signal_draw.json`). A proposer's ranking here need not transfer to real markets.",
         "- The two `textbook` signals favour any proposer with prior knowledge of classic factors (for "
         "example an LLM); `library_family` is a documented idea whose Kakushadze (2016) formula is in the "
         "reference library; `drawn` was sampled from the random baseline's own grammar distribution, "
@@ -365,6 +392,7 @@ __all__ = [
     "LONG_SHORT_HEADING",
     "NULL_HEADER",
     "NULL_HEADING",
+    "NULL_RECALL_HEADING",
     "RECOVERY_HEADING",
     "headline_rows",
     "null_rows",

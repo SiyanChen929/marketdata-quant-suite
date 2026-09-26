@@ -12,9 +12,11 @@ programming~\citep{koza1992genetic}, which serves as our main non-LLM
 baseline. \citet{yu2023alphagen} use reinforcement learning to generate
 collections of formulaic alphas that work well together. \citet{wang2023alphagpt}
 describe an interactive system in which an LLM helps a human analyst mine
-alphas. Our study keeps the search space and budget fixed and changes only
-the proposer, so that differences between methods can be attributed to the
-proposer rather than to the evaluation.
+alphas. In our study all proposers share the language, the validator's
+limits, the trial budget and the evaluation, so that differences between
+methods can be attributed to the proposer rather than to the evaluation. The
+baselines, however, sample from a restricted menu of windows, literals and
+depths, to which the LLM is not limited (Section~\ref{sec:limitations}).
 
 \paragraph{Machine learning in empirical asset pricing.}
 \citet{gu2020empirical} compare machine-learning methods for predicting the

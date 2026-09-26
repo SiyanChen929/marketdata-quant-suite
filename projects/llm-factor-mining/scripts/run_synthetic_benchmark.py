@@ -2,12 +2,14 @@
 """Run the synthetic planted-alpha benchmark (random vs evolutionary, optional LLM).
 
 Writes ``results/synthetic_benchmark/summary.json`` and ``summary.md`` inside
-this project; per-run ledgers go to ``runs/synthetic_benchmark`` (gitignored).
-The grid covers planted markets (SNR 0.05 and 0.15, seeds 0-2) and null
-markets (snr = 0, seeds 0-9).  The LLM arm runs only with ``--backend
-anthropic`` (credentials required; responses are recorded to a fresh
-``llm_responses.jsonl`` next to the summary) or ``--backend replay
---replay-file PATH``; otherwise it is recorded as not run.
+this project (or ``--out``); per-run ledgers go to a fresh, time-stamped
+subdirectory of ``runs/synthetic_benchmark`` (gitignored) on every
+invocation.  The grid covers planted markets (SNR 0.05 and 0.15, seeds 0-2)
+and null markets (snr = 0, seeds 0-9).  The LLM arm runs only with
+``--backend anthropic`` (credentials required; responses are recorded to a
+fresh ``llm_responses.jsonl`` next to the summary) or ``--backend replay
+--replay-file PATH``; without ``--backend`` it is recorded as not run, and a
+requested backend that cannot run stops the script before anything runs.
 
 Example (from the repository root)::
 
@@ -46,9 +48,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if raw:
         command += " " + shlex.join(raw)
-    json_path, md_path, summary = run_benchmark_from_args(args, command=command)
+    json_path, md_path, summary, runs_path = run_benchmark_from_args(args, command=command)
     print(f"wrote {json_path}")
     print(f"wrote {md_path}")
+    print(f"per-run ledgers in {runs_path}")
     print(f"total runtime {summary['runtime_seconds']} s")
     return 0
 

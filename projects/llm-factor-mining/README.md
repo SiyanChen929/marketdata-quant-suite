@@ -62,7 +62,7 @@ flowchart LR
 | Splits and embargo, trial ledger, sealed hold-out, study registry, contamination checks | `src/llm_factor_mining/protocol/` |
 | BH / BY / Holm, deflated Sharpe ratio | `src/llm_factor_mining/inference.py` |
 | Search, two-stage selection and seal loop | `src/llm_factor_mining/search.py` |
-| Synthetic planted-alpha benchmark and the pre-registered draw of one planted signal | `src/llm_factor_mining/benchmark/` |
+| Synthetic planted-alpha benchmark and the random draw of one planted signal (procedure fixed in code) | `src/llm_factor_mining/benchmark/` |
 
 ## Leakage and multiplicity controls
 
@@ -73,15 +73,15 @@ last column says what the control does *not* guarantee.
 |---|---|---|---|
 | Causal language | Operators only look backward. Windows are integer literals (`delay`/`delta` need d >= 1, rolling operators d >= 2). Forward returns are not a terminal. | `test_lookahead.py` changes all bars after a date and checks that no earlier factor value moves, for every operator, terminal and nested expressions | none known |
 | Execution lag and embargo | `fwd[t] = close[t+lag+h] / close[t+lag] - 1` with `lag >= 1` enforced. Windows are separated by at least `lag + max_horizon` sessions and each window drops its last `lag + h` signal dates. | `test_metrics.py`, `test_protocol.py` | |
-| Phase-by-phase data access | The search loop evaluates on a panel cut at the formation end; validation data enter only after the loop. With a loader (the store path) later windows are not even loaded until their phase, and the test window is loaded only after the factor set is frozen. | `test_search.py` (`test_loader_reads_each_window_only_when_its_phase_starts`) | With an in-memory panel (synthetic data) the whole history is in the process: the barrier is the interface. In-process code could read memory; an LLM receives nothing but the rendered prompt. |
+| Phase-by-phase data access | The search loop evaluates on a panel cut at the formation end; validation data enter only after the loop. With a loader (the store path) later windows are not even loaded until their phase, and the test window is loaded only after the factor set is frozen; each longer load must extend the earlier one in dates, symbols and values (bar-source labels may differ, for example after a vendor switch). | `test_search.py` (`test_loader_reads_each_window_only_when_its_phase_starts`, `test_a_bar_source_that_appears_later_is_not_a_change_of_the_data`) | With an in-memory panel (synthetic data) the whole history is in the process: the barrier is the interface. In-process code could read memory; an LLM receives nothing but the rendered prompt. |
 | Formation-only feedback | `ProposalContext` is frozen and slotted, and its feedback fields accept exactly two types, whose metric fields are all `formation_*`. Anything else raises `LeakageError`. | `test_proposer_isolation.py`: every context is identical when post-formation data are altered | |
-| Windows fixed before evaluation | `evaluate` cannot move windows: synthetic markets use the fixed default split, and store data use the windows registered for a *study* (`register-study`); the panel is never loaded past the registered validation end, and every `evaluate` call is logged in the registry's exploration count. | `test_cli_stage2.py` | The registry is self-attested (see below). |
-| Anonymized prompts | The context carries no dates, tickers or sample sizes. Harness-written prompt text is checked for ISO dates, month names (full names; "March", "May" and abbreviations when capitalized), four-digit years and panel symbols; a hit aborts the run. Model-written rejected text that trips the check is redacted instead. | `test_llm_backend.py` | Heuristic: feedback statistics are not checked for year-like numbers, and distributional fingerprints of a period cannot be detected. |
-| Trial ledger | An append-only, SHA-256 hash-chained JSONL file. Every processed proposal is a trial: evaluated, invalid, failed or *degenerate* (too few dates with a defined IC). | `test_protocol.py` (tamper detection, concurrent writers), `test_search.py` | Self-attested: it detects accidental or naive edits. Anyone with write access can rebuild the chain; a head hash proves something to a third party only once it is published elsewhere before the reveal. |
+| Windows fixed before evaluation | `evaluate` cannot move windows: synthetic markets use the fixed default split, and store data use the windows registered for a *study* (`register-study`); the panel is never loaded past the registered validation end, and every `evaluate` call is logged in the registry's exploration count, which `search` and `reveal` report with their results. `register-study` and `search` refuse windows with fewer scorable dates than `min_ic_dates` (100) or fewer symbols than a rank IC needs, on which nothing could ever be selected. | `test_cli_stage2.py`, `test_search.py` | The registry is self-attested (see below). |
+| Anonymized prompts | The context carries no dates, tickers or date counts: degenerate and failed trials go back to the proposer with fixed, count-free texts (the ledger keeps the counts). Harness-written prompt text is checked for ISO dates, month names (full names; "March", "May" and abbreviations when capitalized), four-digit years and panel symbols; a hit aborts the run. Rejected-proposal text (the model's expression plus a validator or fixed message) that trips the date, month or symbol check is redacted instead. | `test_llm_backend.py`, `test_search.py` | Heuristic: feedback statistics are not checked for year-like numbers; the ratio of a trial's t-statistic to its ICIR still implies the approximate formation sample size; distributional fingerprints of a period cannot be detected. |
+| Trial ledger | An append-only, SHA-256 hash-chained JSONL file. Every proposal is logged; every non-duplicate proposal is a trial: evaluated, invalid, failed or *degenerate* (too few dates with a defined IC). Exact canonical repeats and repeated invalid text are logged as duplicates and use no budget. | `test_protocol.py` (tamper detection, concurrent writers), `test_search.py` | Self-attested: it detects accidental or naive edits. Anyone with write access can rebuild the chain; a head hash proves something to a third party only once it is published elsewhere before the reveal. |
 | Two-stage multiplicity | (1) Formation screen: BH over behavioural classes (trials whose per-date ranks agree up to sign test one hypothesis), m = budget minus behavioural duplicates, so an early stop never shrinks the family. Degenerate trials count in m with p = 1. (2) Confirmation: BH on one-sided validation p-values of the screened candidates, m = candidates. p-values use t(n - 1). | `test_search.py`, the null markets of the benchmark | Formation p-values of feedback-driven proposers are not valid for FDR control; only the confirmation step is. Near-duplicates that are not rank-identical stay separate hypotheses (BH then relies on positive dependence; BY is available). |
 | Sealed hold-out | A commitment over the factor set, metric settings, test window and data hash is written before any test metric exists. One commitment and one reveal per (data hash, test window) and ledger, whatever the metric settings; the ledger is re-read on every call. Store data are only *committed* by `search`; `reveal` is a separate step that needs the published commitment hash and the registry's permission (a pre-registered maximum number of reveals per study). | `test_protocol.py`, `test_cli_stage2.py` | The register makes repeated reveals countable, not impossible. |
 | Knowledge-cutoff split | Test IC is compared before and after a provider-documented training cutoff. Returns that straddle the cutoff are dropped. The cutoff date is never assumed. A library function, not yet wired into run artifacts. | `test_protocol.py` | |
-| Record/replay LLM calls | Every outcome of every call, failures included, is appended in order to a write-only JSONL file keyed by request and backend identity; replay follows the recorded path exactly. Transient errors (429, 5xx, 529, connection) are retried with bounded backoff; configuration errors (400/401/403/404/413/422) abort the run. The served model id, stop reason and token usage are logged. Server-side fallback is off by default. | `test_llm_backend.py` (including a live-then-replay run with a transient failure) | A new live run is a new sample. |
+| Record/replay LLM calls | Every outcome of every call, failures included (fatal configuration errors and unexpected exceptions too), is appended in order to a write-only JSONL file keyed by request and backend identity; replay follows the recorded path exactly. Transient errors (429, 5xx, 529, connection) are retried with bounded backoff; configuration errors (400/401/403/404/413/422) abort the run. The served model id, stop reason and token usage are logged. Server-side fallback is off by default. | `test_llm_backend.py` (including a live-then-replay run with a transient failure) | A new live run is a new sample. |
 
 The main residual risks are listed under [Status](#status) and in the
 [research plan](docs/research-plan.md#7-threats-to-validity).
@@ -124,7 +124,7 @@ run. It gets these files:
 - `ledger.jsonl`: every trial, duplicate, proposer error, the selection, the commitment and the reveal
 - `selected.json`: the frozen set, the commitment and the selection funnel
 - `reveal.json`: test metrics (only after a reveal)
-- `provenance.json`: data hash, software versions, proposer provenance (served models, token usage), ledger heads
+- `provenance.json`: data hash, software versions, proposer provenance (served models, token usage), ledger heads, and for store data the study registry's counts of explorations, commits and reveals
 
 To check the ledger against the head hash recorded in the run's provenance:
 
@@ -188,14 +188,17 @@ python -m llm_factor_mining.cli search --proposer llm --backend anthropic --effo
 python -m llm_factor_mining.cli search --proposer llm --backend replay \
   --replay-file projects/llm-factor-mining/runs/demo-llm/llm_responses.jsonl \
   --data synthetic --snr 0.15 --seed 0 --run-dir projects/llm-factor-mining/runs/demo-llm-replay
-# LLM arm of the synthetic benchmark
-python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py --backend anthropic
+# LLM arm of the synthetic benchmark (re-runs the baselines too; --out keeps the
+# committed baseline summary in results/synthetic_benchmark/ untouched)
+python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py --backend anthropic \
+  --out projects/llm-factor-mining/results/synthetic_benchmark_llm
 ```
 
 `--fallback` enables server-side model fallback. It is off by default because
 it can change the model under test. Without credentials, `--backend anthropic`
-stops before creating a run directory, and the benchmark records the LLM arm
-as "not run".
+stops before anything is run or written (for `search`, before a run directory
+is created). Without `--backend`, the benchmark records the LLM arm as
+"not run".
 
 ## Synthetic benchmark (harness validation only)
 
@@ -214,15 +217,26 @@ one-session execution lag:
   the volume–return correlation idea behind Kakushadze's Alpha#2, whose
   formula is in the reference library;
 - one `drawn` signal, `delta(ts_cov(ts_argmin(low,20),cs_demean(open),5),1)`:
-  candidate 40 of a pre-registered random draw from the typed grammar, the
-  first one whose values are far from every library entry
+  candidate 40 of a random draw from the typed grammar, the first candidate
+  meeting all four pre-set criteria (structure, well-defined, far in values
+  from every library entry, convergent)
   ([`results/planted_signal_draw.json`](results/planted_signal_draw.json)).
+  The draw procedure was fixed in code (`benchmark/draw.py`) before the draw
+  was run; this is self-attested, not an external registration.
 
 Every planted signal can be produced by both baselines (a test computes a
-non-zero sampling probability under the random grammar).
+non-zero sampling probability under the random grammar). For the
+library-family signal this holds only since the baselines' window menu
+gained the value 1, a change made after the first harness runs had been seen
+(see the research plan's disclosure).
 
 **Grid.** SNR 0.05 and 0.15 with market seeds 0 to 2, plus 10 *null*
-markets (snr = 0, seeds 0 to 9) in which nothing is planted.
+markets (snr = 0, seeds 0 to 9) in which nothing is planted. The proposer
+seed is 10000 + market seed at every SNR level, so the cells of one market
+seed share their proposal streams (common random numbers): the feedback-free
+random arm evaluates the same 200 expressions on the SNR 0.05, SNR 0.15 and
+null market of seed k, and GP starts from the same first batch. These cells
+are not independent samples of the proposer.
 
 **Protocol.**
 
@@ -256,19 +270,29 @@ The tables are copied verbatim from
 | evolutionary | 10/10 | 0/10 | 0.0 ± 0.0 | 4.5 ± 10.9 | 0.0 ± 0.0 | n/a |
 | random | 10/10 | 0/10 | 0.0 ± 0.0 | 0.2 ± 0.6 | 0.0 ± 0.0 | n/a |
 
+Recall on the null markets, where the planted expressions carry no return:
+
+| arm | complete runs | recall | reversal_5 | abnormal_volume_20 | volume_return_corr_10 | drawn_40 |
+|---|---|---|---|---|---|---|
+| evolutionary | 10/10 | 0.42 ± 0.12 | 10/10 found | 7/10 found | 0/10 found | 0/10 found |
+| random | 10/10 | 0.47 ± 0.08 | 10/10 found | 9/10 found | 0/10 found | 0/10 found |
+
 **Metric definitions.**
 
 - **recovery**: share of planted signals matched by a selected, oriented
   factor (rho >= 0.7 on the test window; signed, so a factor that bets
   against a planted signal recovers nothing).
-- **recall**: |rho| >= 0.7 for any evaluated trial on the formation window.
+- **recall** ("found"): |rho| >= 0.7 for any evaluated trial on the
+  formation window. It says that the proposer wrote a close copy of a planted
+  expression, not that it detected a signal: recall is about as high on the
+  null markets (0.42 ± 0.12 and 0.47 ± 0.08) as on the planted ones.
 - **true FDP**: share of selected factors whose oriented rank correlation
   with the planted composite (the true expected-return signal) on the test
   window is below 0.1. On null markets every selected factor would count as
   false.
 - **test non-significance rate**: share of selected factors whose one-sided
-  test IC fails BH at 0.05. It measures the power of a 148-date test window,
-  not falsity.
+  test IC fails BH at 0.05 (p-values against t(n − 1)). It measures the
+  power of a 148-date test window, not falsity.
 - **behavioural novelty**: 1 − max |mean per-date rank correlation| with any
   library factor on the formation window (0 = a re-spelled library factor).
   **Structural novelty** (1 − max subtree Jaccard similarity) describes
@@ -298,9 +322,14 @@ the null arm 10, so none of the differences below is a statistical claim.
   textbook signals were recovered.
 - **Syntax-based novelty is misleading.** At SNR 0.15 the selected factors
   look new to the structural (subtree) score, 0.85 ± 0.02 (GP) and
-  0.82 ± 0.05 (random), but their values are close to library factors:
-  behavioural novelty was 0.27 ± 0.07 and 0.35 ± 0.08. Rediscovery has to be
-  measured on values.
+  0.82 ± 0.05 (random), but their values are substantially correlated with
+  library factors: behavioural novelty was 0.27 ± 0.07 and 0.35 ± 0.08.
+  Rediscovery has to be measured on values.
+- **"Found" is not detection.** `reversal_5` was found in all 10 null runs
+  of both arms and `abnormal_volume_20` in 7/10 (GP) and 9/10 (random),
+  about as often as on planted markets, because close copies of these
+  expressions are easy to reach in the grammar. Recall therefore says
+  nothing about whether search detected a signal; recovery does.
 - **Behavioural duplicates are common.** Each run produced 12 to 61
   evaluated trials whose ranks repeated an earlier trial's (funnel table).
   Counted separately, such clusters would inflate BH discoveries.
@@ -363,13 +392,18 @@ python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py
 python projects/llm-factor-mining/scripts/render_paper_tables.py --check
 ```
 
-The first command re-runs the pre-registered draw and checks that it still
-accepts the planted `drawn_40` expression. The second rewrites
-`results/synthetic_benchmark/summary.{json,md}` and writes per-run ledgers to
-`runs/synthetic_benchmark/` (gitignored). The run is deterministic: on
+The first command re-runs the draw and checks that it still accepts the
+planted `drawn_40` expression and reproduces the committed
+`results/planted_signal_draw.json`; it writes nothing unless given `--out`.
+The second rewrites `results/synthetic_benchmark/summary.{json,md}` (pass
+`--out DIR` to write elsewhere) and writes per-run ledgers to a fresh,
+time-stamped subdirectory of `runs/synthetic_benchmark/` (gitignored), so it
+can be run again without clearing earlier ledgers. The run is deterministic: on
 2026-09-25, re-running four of its runs (SNR 0.05 seed 2 and null seed 0,
 both arms) with a different `PYTHONHASHSEED` reproduced their ledger heads and
-every scored field.
+every scored field. On 2026-09-26 a full re-run with the current code (into a
+scratch `--out`) reproduced every field of `summary.json`, ledger heads
+included, except the timings and the recorded command line.
 
 - The recorded runtime is 332.8 s.
 - Software: Python 3.11.15, numpy 2.4.6, pandas 2.3.3, scipy 1.17.1.

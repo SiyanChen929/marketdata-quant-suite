@@ -13,10 +13,10 @@ Components:
   bounded exponential backoff; configuration errors (400/401/403/404/413/422)
   raise :class:`LLMConfigurationError`, which aborts the run;
 * :class:`CachedBackend` - wraps any backend and appends every request and
-  outcome (responses *and* failures, in order) to a JSON Lines file keyed by
-  the SHA-256 of the canonical request.  By default the file is write-only
-  (a live run is a new sample); ``reuse=True`` answers repeated requests from
-  it;
+  outcome (responses *and* failures, fatal ones included, in order) to a
+  JSON Lines file keyed by the SHA-256 of the canonical request.  By default
+  the file is write-only (a live run is a new sample); ``reuse=True`` answers
+  repeated requests from it;
 * :class:`ReplayBackend` - offline, exact replay of such a file: the ``n``-th
   request with a given key receives the ``n``-th recorded outcome for that
   key, failures included, so a replayed search follows the live run's path; a
@@ -25,11 +25,16 @@ Components:
 * :class:`LLMProposer` - renders versioned prompt templates from
   ``llm_factor_mining/prompts`` (their SHA-256 is recorded with every call).
 
-Prompts are anonymized by construction (the context carries no dates, asset
-identifiers or sample sizes).  Harness-written text (templates and the grammar
-card) is checked at render time by :func:`find_anonymization_violations` and a
-hit is fatal; model-written text that is echoed back (rejected proposals) is
-redacted instead of aborting the run.
+Prompts are anonymized by construction: the context carries no dates, asset
+identifiers or date counts (the search sends degenerate and failed trials back
+with fixed, count-free texts).  The formation statistics themselves still
+imply the approximate formation sample size (``t / ICIR`` grows like the
+square root of the number of IC dates).  Harness-written text (templates and
+the grammar card) is checked at render time by
+:func:`find_anonymization_violations` and a hit is fatal; rejected-proposal
+text (the model's own expression plus a validator or harness message) is
+checked for dates, month names and identifiers and redacted instead of
+aborting the run.
 """
 
 from __future__ import annotations
@@ -140,6 +145,14 @@ class LLMConfigurationError(RuntimeError):
 
 class ReplayMissError(RuntimeError):
     """A replayed run asked for a request that was never recorded (fatal)."""
+
+
+class RecordedFailureError(RuntimeError):
+    """Replay of a call whose live run failed with an unexpected, non-LLM exception (fatal)."""
+
+
+# record kind of an exception that is neither an LLMError nor a configuration error
+UNEXPECTED_KIND = "unexpected"
 
 
 class PromptLeakError(RuntimeError):
@@ -477,8 +490,14 @@ def _response_from_record(record: Mapping[str, Any], source: str) -> LLMResponse
     }
     error = response.get("error")
     if error is not None:
-        cls = _ERROR_CLASSES.get(error.get("kind"), LLMError)
-        raise cls(str(error.get("message", "recorded LLM error")), metadata)
+        kind = error.get("kind")
+        message = str(error.get("message", "recorded LLM error"))
+        if kind == LLMConfigurationError.kind:
+            raise LLMConfigurationError(message, metadata)  # fatal on replay, as it was live
+        if kind == UNEXPECTED_KIND:
+            raise RecordedFailureError(f"the recorded run stopped here with {message}")
+        cls = _ERROR_CLASSES.get(kind, LLMError)
+        raise cls(message, metadata)
     return LLMResponse(json.loads(canonical_json(response["data"])), metadata)
 
 
@@ -494,8 +513,10 @@ class CachedBackend:
 
     Every outcome of every request is appended in call order: parsed
     responses, deterministic failures of a served response (refusal,
-    truncation, invalid JSON) *and* failures that survived the backend's own
-    retries (transient or other API errors).  Each record carries its
+    truncation, invalid JSON), failures that survived the backend's own
+    retries (transient or other API errors) *and* fatal ones (configuration
+    errors and any other exception, recorded before it is re-raised; a replay
+    raises them again).  Each record carries its
     occurrence index for its request key, so :class:`ReplayBackend` can follow
     the live run's exact path, failures included.
 
@@ -552,13 +573,17 @@ class CachedBackend:
         }
         try:
             response = self.inner.complete_json(system, user, schema, request_tag=request_tag)
-        except LLMError as exc:
+        except (LLMError, LLMConfigurationError) as exc:
             self._append(
                 {
                     **base,
                     "response": {"error": {"kind": exc.kind, "message": str(exc)}, "metadata": json_safe(exc.metadata)},
                 }
             )
+            raise
+        except Exception as exc:  # noqa: BLE001 - recorded, then re-raised unchanged
+            message = f"{type(exc).__name__}: {exc}"[:2000]
+            self._append({**base, "response": {"error": {"kind": UNEXPECTED_KIND, "message": message}, "metadata": {}}})
             raise
         self._append({**base, "response": {"data": response.data, "metadata": json_safe(response.metadata)}})
         return LLMResponse(
@@ -988,6 +1013,7 @@ __all__ = [
     "PromptLeakError",
     "PromptTemplate",
     "ReplayBackend",
+    "RecordedFailureError",
     "ReplayMissError",
     "classify_status_error",
     "find_anonymization_violations",

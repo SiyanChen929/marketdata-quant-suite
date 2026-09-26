@@ -1,6 +1,6 @@
 # Research plan: LLM-guided formulaic factor mining under a sealed-holdout protocol
 
-Status as of 2026-09-25: this is a **pre-registration draft**.
+Status as of 2026-09-26: this is a **pre-registration draft**.
 
 - **Done.** The harness and two baselines are implemented, and a synthetic
   benchmark validates them ([result card](result-card.md)).
@@ -16,9 +16,22 @@ Status as of 2026-09-25: this is a **pre-registration draft**.
 - **Disclosure.** H2 and the benchmark's planted signals were revised on
   2026-09-25 *after* the baseline harness runs had been seen (a review found
   that the earlier "non-textbook" signal was outside the baselines' search
-  space and belonged to a documented factor family). The revised benchmark
-  was re-run with the baselines before any LLM experiment. H2's confirmatory
-  seeds (100 to 119) exclude the harness seeds 0 to 2 already seen.
+  space and belonged to a documented factor family). In the same round of
+  revisions:
+  - the window menu that both baselines share (`GrammarConfig.windows`) gained
+    the value 1 (it was 2, 3, 5, 10, 20, 40, 60), so that the library-family
+    signal's one-session change `delta(log(volume), 1)` became reachable; GP's
+    operator settings were not changed;
+  - the selection procedure took its present two-stage form (formation screen
+    plus validation confirmation).
+
+  The revised benchmark was re-run with the baselines before any LLM
+  experiment; it is harness validation, not a confirmatory test. H2's
+  confirmatory seeds (100 to 119) exclude the harness seeds 0 to 2 already
+  seen. On 2026-09-26, after a review of those harness results, H4's
+  synthetic endpoint was changed from raw recall to recovery and
+  null-contrasted recall, because raw recall turned out to be about as high
+  on null markets as on planted ones.
 
 ## 1. Motivation
 
@@ -170,11 +183,16 @@ otherwise it is reported as not supported. Both outcomes are publishable.
 - **Comparison.** LLM with feedback vs LLM with feedback removed, at equal
   budget.
 - **Endpoints.**
-  - synthetic: recall and recovery, over at least 20 seeds;
+  - synthetic: recovery and trials-to-first-recovery over at least 20 seeds,
+    plus recall only as a contrast with null markets (planted minus null
+    recall per arm). Raw recall is not an endpoint: in the harness it was
+    about as high on null markets, where nothing is planted, as on planted
+    ones, so it measures whether a proposer writes such expressions, not
+    detection;
   - real data: validation-window composite ICIR only, so there is no extra
     test reveal.
 - **Test.** Wilcoxon signed-rank test, paired by seed or replicate.
-- **Supported iff** p < 0.05 on the synthetic recall endpoint and the
+- **Supported iff** p < 0.05 on the synthetic recovery endpoint and the
   real-data validation difference has the same sign.
 
 ## 4. Planned contributions
@@ -189,7 +207,8 @@ otherwise it is reported as not supported. Both outcomes are publishable.
    - a commit-then-reveal test hold-out with a project-wide reveal register.
 2. **Benchmark.** A planted-alpha synthetic benchmark with null markets and
    a ground truth that mixes textbook signals, a documented factor family and
-   a signal drawn at random by a pre-registered procedure. Only recovery of
+   a signal drawn at random by a procedure fixed in code before the draw was
+   run (self-attested, not externally registered). Only recovery of
    the drawn signal speaks to search beyond prior knowledge.
 3. **Comparison.** An equal-budget comparison of LLM, random-grammar and
    genetic-programming search on US equities (pending).
@@ -263,8 +282,8 @@ depend on experiments that have not been run.
   uses B ∈ {200, 500, 1000} on synthetic data and validation only. Equal
   *trial* budgets are not equal *compute*: a GP trial costs well under a
   second, an LLM batch costs thinking tokens. Arm F therefore gives the
-  baselines the LLM arm's compute, and recall is reported against both
-  trials and cost. The harness finding that GP did not beat random search
+  baselines the LLM arm's compute, and recovery (and null-contrasted recall)
+  is reported against both trials and cost. The harness finding that GP did not beat random search
   holds at B = 200 only.
 - **Batches.** Batch size is 20.
 - **What counts as a trial.** Every non-duplicate processed proposal: valid
@@ -289,7 +308,7 @@ depend on experiments that have not been run.
 | C: classic library | the 18-entry reference catalog passed through the same selection and seal | planned (needs a library proposer) |
 | D: LLM (protocol) | `LLMProposer`, prompt v2, formation-only feedback, JSON-schema output, adaptive thinking, effort `high`, fallback off | implemented, **not yet run** |
 | E: Alpha-GPT-style prompting (optional) | an interactive-alpha-mining prompting style (Wang et al., 2023) re-implemented inside the same DSL, budget and protocol | planned |
-| F: compute-matched baselines | GP and random search with a budget matched to the LLM arm's measured cost (wall-clock or dollars, fixed from the pilot; at least 10^4 trials), under the same trial accounting (m = its budget) | infrastructure implemented (`name@budget` arms), **not yet run** |
+| F: compute-matched baselines | GP and random search with a budget matched to the LLM arm's measured cost (wall-clock or dollars, fixed from the pilot; at least 10^4 trials), under the same trial accounting (m = its budget) | infrastructure implemented (`name@budget` arms; the round cap `max(100, 10⌈B/b⌉)` scales with the budget, and a test checks that a 10^4-trial arm's cap leaves room for its whole budget), **not yet run** |
 
 ### 5.5 Metrics
 
@@ -311,7 +330,9 @@ depend on experiments that have not been run.
     novelty (secondary).
   - Provenance: served model ids and token usage.
 - **Synthetic runs also report** recovery, recall and per-signal
-  recovered/found counts.
+  recovered/found counts, with recall on the null markets next to recall on
+  the planted ones ("found" means a close copy was written, not that a
+  signal was detected).
 - **The result card** reports the governance ladder's metrics: return,
   volatility, Sharpe, drawdown, turnover and trade count. The harness does not
   yet compute drawdown or trade count; adding them is part of real-data
@@ -332,7 +353,8 @@ depend on experiments that have not been run.
     candidates. No proposer ever sees validation data, so these p-values are
     valid given the candidate set;
   - BY at the same q, for robustness under arbitrary dependence
-    (`fdr_method="by"`, `confirm_method="by"`);
+    (`fdr_method="by"`, `confirm_method="by"`; implemented, not yet reported:
+    the harness summary uses BH only);
   - the deflated Sharpe ratio of formation |ICIR| (Bailey & López de Prado,
     2014) as a diagnostic, with 2N trials because selecting on |ICIR| is
     two-sided;
@@ -352,7 +374,7 @@ depend on experiments that have not been run.
     ranks. Highly correlated but distinct variants remain separate
     hypotheses. For BH (a step-up rule) such clusters make the screen *less*
     strict, not more; its validity then rests on positive dependence, and BY
-    is reported alongside.
+    is to be reported alongside.
 
 ### 5.7 Reveal accounting
 
@@ -366,8 +388,11 @@ depend on experiments that have not been run.
   - `search` on store data only commits; the commitment is recorded in the
     registry and must be published outside the repository before `reveal`;
   - `reveal` checks the published commitment, the run's ledger and data
-    hash, refuses once the study's reveals are used up, and logs every
-    refusal;
+    hash, and refuses once the study's reveals are used up. Refusals by the
+    seal and by the registry are logged; the command's own pre-checks (a
+    commitment hash that does not match, reloaded data that do not match the
+    committed data hash, a ledger without the commitment) stop before any
+    test metric is computed and are not logged;
   - within one ledger, the seal allows one commitment and one reveal per
     (data hash, test window), whatever the metric settings.
 - **What it does not do.** The registry, like the ledger, is self-attested:
@@ -387,7 +412,7 @@ validation window only.
 | Ablation | Levels | Implementation status |
 |---|---|---|
 | Formation feedback | on (default) / off (context without the top, bottom, previous-round and rejected blocks) | needs a feedback-stripping wrapper |
-| Rationale requirement | on (schema v1) / off (expression-only schema) | needs an expression-only schema version |
+| Rationale requirement | on (the current `PROPOSAL_SCHEMA`, whose SHA-256 is recorded) / off (expression-only schema) | needs an expression-only schema version |
 | Anonymization | on (default) / off, i.e. true dates and tickers in the prompt, **as a contamination probe only**, in a pre-cutoff window | needs an explicit probe mode; the default context design forbids it |
 | Reasoning effort | low / medium / high (default) / max | available through `--effort` |
 | Model | the default model plus optional others | available through `--model`; served ids are logged |
@@ -412,16 +437,31 @@ it does, that is direct evidence of recall.
 - **Prompt leakage.** Harness-written prompt text is checked for ISO dates,
   month names (full names; "March", "May" and abbreviations such as "Sept."
   when capitalized), four-digit years (also sentence-final) and panel
-  symbols; a hit aborts the run. Model-written rejected text that trips the
-  check is redacted, not echoed. The check is heuristic:
+  symbols; a hit aborts the run. Rejected-proposal text (the model's own
+  expression plus a validator message, or a fixed, count-free text for
+  degenerate and failed trials) that trips the check is redacted, not
+  echoed. The check is heuristic:
   - numbers inside feedback statistics and the integer counters are not
     checked for year-like values;
+  - the ratio of a trial's t-statistic to its ICIR still implies the
+    approximate formation sample size (it grows like the square root of the
+    number of IC dates);
   - it cannot detect subtle distributional fingerprints of a period.
   The rendered prompt hashes of every call are logged for audit.
 - **Prompt steering.** The v1 template gave example mechanisms ("liquidity
   provision", "investor attention", "overreaction") that match the stories of
   the textbook planted signals. v2, the default, gives none; v1 is kept for
   the record and has never been used in an experiment.
+- **Unequal search spaces (RQ1 comparability).** All arms share the
+  language, the validator's limits, the budget and the evaluation, but not the
+  reachable space: the LLM may propose anything the validator accepts
+  (windows up to 252 sessions, depth up to 10, any literal within the limits),
+  while both baselines draw windows from (1, 2, 3, 5, 10, 20, 40, 60),
+  literals from {0.5, 1, 2} and exponents from {0.5, 2}, and random trees
+  have depth at most 4. Library factors such as `momentum_12_1` are outside
+  the baselines' support. An LLM advantage could partly reflect this larger
+  space; results will be reported with this caveat, and a baseline with a
+  wider menu is a candidate robustness arm.
 - **Information barrier.** The harness gives proposers formation statistics
   only, and for store data the loader does not read later windows until
   their phase. It is an interface, not a sandbox: in-process code could read
@@ -455,9 +495,17 @@ it does, that is direct evidence of recall.
   tag (SNR and market seed), so cells never share cached responses.
 - **Synthetic benchmark design.** The planted signals, SNR levels and the
   data-generating process were chosen by the authors (the drawn signal by the
-  pre-registered procedure). Recall uses every 5th formation date. Recovery
-  depends on a correlation threshold (0.7) and the true FDP on another (0.1).
-  Synthetic rankings need not transfer to real markets.
+  procedure of `benchmark/draw.py`, fixed in code before the draw was run).
+  Recall uses every 5th formation date. Recovery depends on a correlation
+  threshold (0.7) and the true FDP on another (0.1). Synthetic rankings need
+  not transfer to real markets.
+- **Shared proposal streams.** In the harness grid the proposer seed is
+  10000 + market seed at every SNR level, so the random arm evaluates the
+  same expressions on the SNR 0.05, SNR 0.15 and null market of each seed,
+  and GP starts from the same first batch (common random numbers). Those
+  cells are not independent samples of the proposer. Whether H2's
+  confirmatory runs use cell-specific proposer seeds is to be fixed when the
+  plan is frozen.
 - **Short windows.** A 147-date synthetic validation window and a 148-date
   test window limit power: at SNR 0.05 the confirmation step selected factors
   in only one run per arm. Real-data windows should span several years, and
@@ -477,7 +525,7 @@ n_calls(run) ≥ ⌈B / b⌉ + (pause_turn continuations)
   - T_in and T_out are input and output tokens. Thinking tokens are billed as
     output.
   - More calls are needed when the model returns duplicates, bounded by
-    `max_rounds = 100`.
+    `max_rounds = max(100, 10⌈B/b⌉)` (100 at B = 200, b = 20).
 - **Measuring tokens.** Take T_in and T_out from a pilot run's
   `provenance.json` (`proposer_provenance.usage_totals`) or from the API's
   token counting.
@@ -531,6 +579,7 @@ call for papers.
 - Gu, S., Kelly, B., & Xiu, D. (2020). Empirical asset pricing via machine learning. *Review of Financial Studies*, 33(5), 2223–2273.
 - Hansen, P. R. (2005). A test for superior predictive ability. *Journal of Business & Economic Statistics*, 23(4), 365–380.
 - Harvey, C. R., Liu, Y., & Zhu, H. (2016). ... and the cross-section of expected returns. *Review of Financial Studies*, 29(1), 5–68.
+- Ji, Z., et al. (2023). Survey of hallucination in natural language generation. *ACM Computing Surveys*, 55(12).
 - Kakushadze, Z. (2016). 101 formulaic alphas. *Wilmott*, 2016(84), 72–81.
 - Koza, J. R. (1992). *Genetic Programming*. MIT Press.
 - Lopez-Lira, A., & Tang, Y. (2023). Can ChatGPT forecast stock price movements? arXiv:2304.07619.
@@ -539,4 +588,5 @@ call for papers.
 - Romera-Paredes, B., et al. (2024). Mathematical discoveries from program search with large language models. *Nature*, 625, 468–475.
 - Wang, S., et al. (2023). Alpha-GPT: Human-AI interactive alpha mining for quantitative investment. arXiv:2308.00016. *(metadata to be verified before submission)*
 - White, H. (2000). A reality check for data snooping. *Econometrica*, 68(5), 1097–1126.
+- Wu, S., et al. (2023). BloombergGPT: A large language model for finance. arXiv:2303.17564.
 - Yu, S., et al. (2023). Generating synergistic formulaic alpha collections via reinforcement learning. *KDD 2023*. *(metadata to be verified before submission)*

@@ -192,7 +192,8 @@ the command-line interface works this way. Each round proceeds as follows.
 The loop stops for any of these reasons:
 \begin{itemize}
   \item the budget of $B$ trials is reached;
-  \item 100 rounds have run;
+  \item $\max(100, 10\lceil B/b\rceil)$ rounds have run (100 at $B=200$,
+    $b=20$), so that larger budgets can be used in full;
   \item 5 consecutive rounds produced no new trial;
   \item 3 consecutive proposer failures occurred (for example, refusals).
 \end{itemize}
@@ -213,8 +214,11 @@ fields accept only two exact types, and subclasses are rejected:
     $t_{\mathrm{NW}}$, top-bucket turnover and complexity. The only factory
     that builds it from a metrics report refuses any window not named
     \code{formation};
-  \item rejected feedback: raw text, error codes and message, truncated to
-    400 characters (invalid, failed and degenerate trials).
+  \item rejected feedback: the proposal's text, its error codes and a
+    message, truncated to 400 characters. For an invalid proposal the message
+    is the validator's; a failed or degenerate trial gets a fixed text (for a
+    failure, only the exception type) without the date counts that the
+    ledger records.
 \end{itemize}
 Each round's context contains:
 \begin{itemize}
@@ -225,8 +229,9 @@ Each round's context contains:
   \item the last 8 rejections;
   \item the trial count and the remaining budget.
 \end{itemize}
-It contains no dates, asset identifiers, sample sizes, or validation or test
-quantities. An end-to-end test perturbs all post-formation bars and confirms
+It contains no dates, asset identifiers, date counts, or validation or test
+quantities. The formation statistics still imply the approximate formation
+sample size, because $t_{\mathrm{NW}}/\ICIR$ grows roughly like $\sqrt{n}$. An end-to-end test perturbs all post-formation bars and confirms
 that every context a proposer receives is unchanged.
 
 \paragraph{Phase 2: selection.} Selection loads a panel truncated at the end
@@ -367,8 +372,12 @@ because selection orients factors. Each round:
     an operator for another of the same signature, a terminal, or a window;
   \item a tenth of each batch is random immigrants.
 \end{itemize}
-Children must be valid and new. These settings were fixed before any
-experiment and were not tuned on results.
+Children must be valid and new. These operator settings were fixed before
+any experiment and were not tuned on results. The window menu that both
+baselines share was extended by the value $1$ in the revision disclosed in
+Section~\ref{sec:limitations}, after the first harness runs had been seen,
+so that the library-family planted signal's one-session change became
+reachable; before, it was $\{2,3,5,10,20,40,60\}$.
 
 \paragraph{LLM-guided (D).} The prompts are two versioned templates, a system
 prompt and a user prompt (version~2), whose SHA-256 hashes are recorded with

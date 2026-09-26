@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 import math
 from pathlib import Path
 import time
@@ -27,7 +28,7 @@ import pandas as pd
 from ..dsl.validate import DSLLimits
 from ..evaluate.engine import Evaluator
 from ..evaluate.metrics import MetricConfig, embargoed_signal_dates, evaluate_signal
-from ..inference import benjamini_hochberg, t_to_p
+from ..inference import benjamini_hochberg
 from ..jsonutil import json_safe
 from ..protocol.contamination import behavioural_novelty, library_novelty, library_signals
 from ..protocol.seal import COMPOSITE_NAME, composite_signal
@@ -35,7 +36,7 @@ from ..protocol.splits import Splits, chronological_splits, truncate_panel
 from ..proposers.base import Proposer
 from ..proposers.evolutionary import EvolutionaryProposer
 from ..proposers.random_grammar import RandomGrammarProposer
-from ..search import SearchConfig, SearchResult, software_versions, run_search
+from ..search import SearchConfig, SearchResult, nw_p_value, software_versions, run_search
 from .synthetic import (
     DEFAULT_PLANTED,
     PlantedFactor,
@@ -191,20 +192,21 @@ def oracle_scores(market: SyntheticMarket, splits: Splits, metric: MetricConfig,
     """Test-window scores of the planted signals themselves (a reference ceiling).
 
     ``power`` is the share of planted signals whose one-sided test IC passes BH
-    at ``test_alpha`` within the planted set: how often a *true* signal is
-    detectable on this test window.
+    at ``test_alpha`` within the planted set (p-values against t(n - 1)): how
+    often a *true* signal is detectable on this test window.
     """
 
     out: dict[str, Any] = {}
     close = market.panel.close
-    t_values = []
+    t_values, n_values = [], []
     for name, signal in market.planted_signals.items():
         out[name] = _report_numbers(evaluate_signal(signal, close, config=metric, window=splits.test).report)
         t_values.append(out[name]["t_nw"])
+        n_values.append(int(out[name]["n_ic_dates"]))
     out[COMPOSITE_NAME] = _report_numbers(
         evaluate_signal(true_alpha(market), close, config=metric, window=splits.test).report
     )
-    p_values = [t_to_p(value, alternative="greater") for value in t_values]
+    p_values = [nw_p_value(t, n, alternative="greater") for t, n in zip(t_values, n_values)]
     out["power"] = benjamini_hochberg(p_values, test_alpha).n_rejected / len(p_values) if p_values else None
     return json_safe(out)
 
@@ -232,7 +234,8 @@ def score_search(
       ``true_discovery_threshold``; on a null market (``snr = 0``) every
       selected factor is false;
     * ``test_nonsignificant_rate``: share of selected factors whose one-sided
-      test IC fails BH at ``test_alpha`` (low test power, not falsity);
+      test IC fails BH at ``test_alpha``, p-values against t(n - 1) (low test
+      power, not falsity);
     * test IC/ICIR of the selected factors (mean) and of their composite;
     * behavioural novelty (primary) and structural novelty (secondary) of the
       selected factors against the reference library.
@@ -261,8 +264,10 @@ def score_search(
     ]
     fdp_true = float(np.mean(false)) if selected else None
 
-    t_stats = [reveal.evaluations[factor.expression_hash].report.ic_tstat_nw for factor in selected]
-    p_values = [t_to_p(value, alternative="greater") for value in t_stats]
+    reports = [reveal.evaluations[factor.expression_hash].report for factor in selected]
+    t_stats = [report.ic_tstat_nw for report in reports]
+    # t(n - 1) reference, as everywhere else in the protocol
+    p_values = [nw_p_value(report.ic_tstat_nw, report.n_ic_dates, alternative="greater") for report in reports]
     nonsignificant: float | None = None
     if selected:
         nonsignificant = 1.0 - benjamini_hochberg(p_values, config.test_alpha).n_rejected / len(selected)
@@ -450,6 +455,34 @@ def _arm_status(runs: Sequence[Mapping[str, Any]], arm: str) -> str:
     return f"run; {len(incomplete)} of {len(mine)} runs incomplete (stop reasons: {', '.join(reasons)})"
 
 
+def fresh_runs_dir(parent: str | Path, *, now: datetime | None = None) -> Path:
+    """Create and return a new, empty per-invocation directory under ``parent``.
+
+    Named by the UTC start time (``20260925T120000Z``, then ``...-2`` and so on
+    if taken), so repeated benchmark invocations never collide with the
+    ledgers of earlier ones.
+    """
+
+    root = Path(parent)
+    root.mkdir(parents=True, exist_ok=True)
+    stamp = (now or datetime.now(timezone.utc)).strftime("%Y%m%dT%H%M%SZ")
+    index = 1
+    while True:
+        candidate = root / (stamp if index == 1 else f"{stamp}-{index}")
+        try:
+            candidate.mkdir()
+        except FileExistsError:
+            index += 1
+            continue
+        return candidate
+
+
+def run_directory(runs_dir: str | Path, snr: float, seed: int, label: str) -> Path:
+    """Per-run ledger directory of one ``(snr, seed, arm)`` cell."""
+
+    return Path(runs_dir) / f"snr{snr:g}_seed{seed}_{label.replace('@', '_b')}"
+
+
 def run_benchmark(
     config: BenchmarkConfig | None = None,
     *,
@@ -475,6 +508,19 @@ def run_benchmark(
     runs: list[dict[str, Any]] = []
     grid = [(float(snr), int(seed)) for snr in cfg.snr_levels for seed in cfg.seeds]
     grid += [(0.0, int(seed)) for seed in cfg.null_seeds]
+    if runs_dir is not None:
+        # refuse up front, not after part of the grid has run
+        taken = [
+            str(path)
+            for snr, seed in grid
+            for label, _, _ in arms
+            if ((path := run_directory(runs_dir, snr, seed, label)) / "ledger.jsonl").exists()
+        ]
+        if taken:
+            raise FileExistsError(
+                f"{len(taken)} run directories under {runs_dir} already hold ledgers (first: {taken[0]}); "
+                "use a fresh runs directory"
+            )
     for snr, seed in grid:
         tick = time.perf_counter()
         market = simulate_market(cfg.market_config(snr, seed))
@@ -513,7 +559,7 @@ def run_benchmark(
                 run_tag=run_tag,
                 forbidden_tokens=market.panel.symbols,
             )
-            run_dir = None if runs_dir is None else Path(runs_dir) / f"snr{snr:g}_seed{seed}_{label.replace('@', '_b')}"
+            run_dir = None if runs_dir is None else run_directory(runs_dir, snr, seed, label)
             result = run_search(proposer, market.panel, splits, cfg.search_config(budget), run_dir=run_dir)
             base = {
                 "arm": label,
@@ -580,10 +626,12 @@ __all__ = [
     "BANNER",
     "BenchmarkConfig",
     "aggregate",
+    "fresh_runs_dir",
     "make_proposer",
     "oracle_scores",
     "parse_arm",
     "run_benchmark",
+    "run_directory",
     "score_search",
     "true_alpha",
 ]

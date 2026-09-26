@@ -500,3 +500,28 @@ def test_replay_follows_the_recorded_order_of_outcomes(tmp_path) -> None:
         replay.complete_json("s", "u", PROPOSAL_SCHEMA)
     with pytest.raises(ReplayMissError):
         replay.complete_json("s", "u", PROPOSAL_SCHEMA)
+
+
+def test_fatal_and_unexpected_failures_are_recorded_and_replayed(tmp_path) -> None:
+    from llm_factor_mining.proposers.llm import RecordedFailureError
+
+    path = tmp_path / "responses.jsonl"
+    cached = CachedBackend(FlakyBackend([PAYLOAD], fail_on=1, error=LLMConfigurationError), path)
+    with pytest.raises(LLMConfigurationError):
+        cached.complete_json("s", "u", PROPOSAL_SCHEMA)
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [record["response"]["error"]["kind"] for record in records] == ["configuration"]
+    with pytest.raises(LLMConfigurationError):  # fatal on replay too, not a recoverable proposer error
+        ReplayBackend(path).complete_json("s", "u", PROPOSAL_SCHEMA)
+
+    class Crashing(FakeBackend):
+        def complete_json(self, system, user, schema, *, request_tag=""):
+            raise KeyError("unexpected")
+
+    other = tmp_path / "crash.jsonl"
+    with pytest.raises(KeyError):  # re-raised unchanged
+        CachedBackend(Crashing([]), other).complete_json("s", "u", PROPOSAL_SCHEMA)
+    record = json.loads(other.read_text())
+    assert record["response"]["error"] == {"kind": "unexpected", "message": "KeyError: 'unexpected'"}
+    with pytest.raises(RecordedFailureError, match="KeyError"):
+        ReplayBackend(other).complete_json("s", "u", PROPOSAL_SCHEMA)

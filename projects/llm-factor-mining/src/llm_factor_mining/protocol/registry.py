@@ -10,7 +10,10 @@ records, for every *study* (a data set plus its pre-registered windows):
   evaluation; a study cannot be re-registered with other terms;
 * ``exploration`` - every evaluation made outside a search run (the CLI
   ``evaluate`` command).  These are forking paths that no run's trial ledger
-  counts, so their number is reported next to every result;
+  counts, so the CLI reports their number (with the commit and reveal
+  counts, :meth:`StudyRegistry.summary`) next to every store-data result: in
+  the ``search`` and ``reveal`` outputs and in the run's ``provenance.json``
+  (``registry_at_commit``, ``registry_at_reveal``);
 * ``commit`` - commitments of search runs on the study's data;
 * ``reveal`` / ``reveal_refused`` - every test-window reveal, capped by the
   study's pre-registered count.  A reveal must match a commitment recorded

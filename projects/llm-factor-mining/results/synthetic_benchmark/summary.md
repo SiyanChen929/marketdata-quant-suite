@@ -12,13 +12,13 @@ Total runtime: 332.8 s. Software: llm_factor_mining 0.2.0, numpy 2.4.6, pandas 2
 
 ## Setup
 
-- Markets: 60 symbols x 750 sessions; planted SNR levels 0.05, 0.15 with market seeds 0, 1, 2; null markets (snr = 0) with seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9. Proposer seed = 10000 + market seed.
+- Markets: 60 symbols x 750 sessions; planted SNR levels 0.05, 0.15 with market seeds 0, 1, 2; null markets (snr = 0) with seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9. Proposer seed = 10000 + market seed, whatever the SNR: for market seed k the feedback-free random arm evaluates the same expression stream on the planted and null markets of seed k, and genetic programming starts from the same first batch (common random numbers), so these cells are not independent samples of the proposer.
 - Splits: formation / validation / test fractions [0.6, 0.2, 0.2], embargo = lag + horizon sessions; execution lag 1, horizon 1.
 - Budget: 200 trials per run unless the arm says `name@budget` (invalid and degenerate proposals count; exact repeats do not), batches of 20. A trial is degenerate when fewer than max(100, 0.5 x scorable) formation dates have a defined IC.
 - Selection: formation screen BH at 0.1 over behavioural classes (m = budget minus behavioural duplicates); validation confirmation BH at 0.1 on one-sided validation p-values (m = candidates carried forward); rank by validation ICIR; greedy decorrelation at |rho| < 0.7; top 5; one sealed test reveal.
-- Recovery: a planted signal is recovered if a selected (oriented) factor's test-window values have mean cross-sectional rank correlation rho >= 0.7 with it. Recall applies |rho| to every evaluated trial on the formation window.
+- Recovery: a planted signal is recovered if a selected (oriented) factor's test-window values have mean cross-sectional rank correlation rho >= 0.7 with it. Recall ("found") applies |rho| to every evaluated trial on the formation window: it says that the proposer produced a close copy of a planted expression, not that search detected a signal, and it is about as high on null markets, where nothing is planted (see the null-market recall table).
 - True FDP: share of selected factors whose oriented rank correlation with the planted composite (the true expected-return signal) on the test window is below 0.1; on null markets every selected factor is false.
-- Test non-significance rate: share of selected factors whose one-sided test IC fails BH at 0.05 within the selected set. It measures test power, not falsity.
+- Test non-significance rate: share of selected factors whose one-sided test IC fails BH at 0.05 within the selected set (p-values against t(n - 1)). It measures test power, not falsity.
 - Behavioural novelty: 1 - max |mean per-date rank correlation| of a selected factor with every reference-library entry on the formation window (value-based; 0 = a re-spelled library factor). Structural novelty: 1 - max subtree Jaccard similarity with the library (syntax only; secondary).
 
 Planted signals (equal weights, each entered as `cs_zscore(expression)`); behavioural novelty against the reference library on the formation window, range over planted markets:
@@ -63,9 +63,18 @@ Recovery, recall and selected average all complete runs. True FDP, the test non-
 | evolutionary | 10/10 | 0/10 | 0.0 ± 0.0 | 4.5 ± 10.9 | 0.0 ± 0.0 | n/a |
 | random | 10/10 | 0/10 | 0.0 ± 0.0 | 0.2 ± 0.6 | 0.0 ± 0.0 | n/a |
 
+## Null markets (snr = 0): recall of the planted expressions
+
+Recall on the null markets, where the planted expressions carry no return: a high value here shows that recall measures whether a proposer writes such expressions, not whether it detects a signal.
+
+| arm | complete runs | recall | reversal_5 | abnormal_volume_20 | volume_return_corr_10 | drawn_40 |
+|---|---|---|---|---|---|---|
+| evolutionary | 10/10 | 0.42 ± 0.12 | 10/10 found | 7/10 found | 0/10 found | 0/10 found |
+| random | 10/10 | 0.47 ± 0.08 | 10/10 found | 9/10 found | 0/10 found | 0/10 found |
+
 ## Oracle reference (planted signals scored on the test window)
 
-Power = share of planted signals whose one-sided test IC passes BH at 0.05 within the planted set.
+Power = share of planted signals whose one-sided test IC passes BH at 0.05 within the planted set (p-values against t(n - 1)).
 
 | SNR | seed | reversal_5 | abnormal_volume_20 | volume_return_corr_10 | drawn_40 | planted composite | power |
 |---|---|---|---|---|---|---|---|
@@ -132,7 +141,7 @@ None: every run used its full budget.
 
 ## Caveats
 
-- Synthetic data: the data-generating process, the planted signals and the SNR levels were chosen by the authors of this benchmark (the `drawn` signal by a pre-registered random draw, see `results/planted_signal_draw.json`). A proposer's ranking here need not transfer to real markets.
+- Synthetic data: the data-generating process, the planted signals and the SNR levels were chosen by the authors of this benchmark (the `drawn` signal by a random draw whose procedure was fixed in code before it was run - self-attested, not externally registered; see `results/planted_signal_draw.json`). A proposer's ranking here need not transfer to real markets.
 - The two `textbook` signals favour any proposer with prior knowledge of classic factors (for example an LLM); `library_family` is a documented idea whose Kakushadze (2016) formula is in the reference library; `drawn` was sampled from the random baseline's own grammar distribution, which if anything favours that baseline.
 - 3 seeds per planted cell and 10 null seeds give coarse estimates; standard deviations are across runs.
 - Budgets of a few hundred trials are small for genetic programming; results for GP hold at this budget only (arms `name@budget` run larger budgets under the same trial accounting).

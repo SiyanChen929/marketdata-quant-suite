@@ -54,7 +54,14 @@ import pandas as pd
 import scipy
 
 from ._version import __version__
-from .data import Panel, PanelError, is_synthetic, recompute_content_sha256, verify_panel_hash
+from .data import (
+    Panel,
+    PanelError,
+    is_synthetic,
+    panel_values_sha256,
+    recompute_content_sha256,
+    verify_panel_hash,
+)
 from .dsl.canonical import canonical_string, canonicalize, complexity, structural_hash
 from .dsl.operators import describe_language
 from .dsl.validate import DSLLimits, validate
@@ -89,11 +96,27 @@ PanelLoader = Callable[[Union[pd.Timestamp, None]], Panel]
 """``load(end)`` returns the study's panel up to ``end`` (``None`` = all data)."""
 
 BEHAVIOUR_NAMESPACE = b"llm-factor-mining/behaviour-v1"
+# What a proposer is told about a degenerate trial: a fixed text without the date counts
+# that the ledger records, so no prompt carries the formation sample size.
+DEGENERATE_FEEDBACK = "too few formation dates with a defined IC (lookback too long, or signal too sparse or constant)"
 
 
 # --------------------------------------------------------------------------
 # configuration and per-window statistics
 # --------------------------------------------------------------------------
+
+
+def default_max_rounds(budget: int, batch_size: int) -> int:
+    """Round cap that scales with the budget: ``max(100, 10 * ceil(budget / batch_size))``.
+
+    100 rounds at the default budget of 200 in batches of 20 (ten times the
+    minimum number of rounds), and proportionally more for larger budgets, so
+    that a compute-matched arm (``name@budget``) can use its whole budget.
+    """
+
+    if batch_size < 1:
+        return 100
+    return max(100, 10 * math.ceil(max(int(budget), 0) / int(batch_size)))
 
 
 @dataclass(frozen=True)
@@ -102,7 +125,7 @@ class SearchConfig:
 
     budget: int = 200
     batch_size: int = 20
-    max_rounds: int = 100
+    max_rounds: int | None = None  # None: default_max_rounds(budget, batch_size)
     patience: int = 5
     max_proposer_failures: int = 3
     metric: MetricConfig = field(default_factory=MetricConfig)
@@ -123,6 +146,8 @@ class SearchConfig:
     record_timestamps: bool = True
 
     def __post_init__(self) -> None:
+        if self.max_rounds is None:
+            object.__setattr__(self, "max_rounds", default_max_rounds(self.budget, self.batch_size))
         if min(self.budget, self.batch_size, self.max_rounds, self.patience, self.top_k) < 1:
             raise ValueError("budget, batch_size, max_rounds, patience and top_k must be positive")
         for name in ("fdr_method", "confirm_method"):
@@ -226,6 +251,52 @@ def window_statistics(
         n_scorable_dates=int(len(dates)),
     )
     return stats, ic
+
+
+def window_capacity_problems(
+    calendar: pd.DatetimeIndex,
+    splits: Splits,
+    config: SearchConfig,
+    *,
+    n_symbols: int | None = None,
+    windows: tuple[str, ...] = ("formation", "validation", "test"),
+) -> list[str]:
+    """Reasons why ``splits`` on ``calendar`` can never yield a usable p-value.
+
+    A window with fewer than ``config.min_ic_dates`` scorable (embargoed)
+    signal dates makes every trial degenerate (formation), every candidate
+    degenerate (validation) or the sealed test uninformative (test); fewer
+    than ``metric.effective_min_names`` symbols leave every rank IC undefined.
+    Such a study would look like an honest null result, so callers refuse it
+    before any window is fixed or any trial is spent.
+    """
+
+    metric = config.metric
+    dates = pd.DatetimeIndex(calendar)
+    problems = []
+    for window in splits.windows():
+        if window.name not in windows:
+            continue
+        n_scorable = len(embargoed_signal_dates(dates, window, lag=metric.lag, horizon=metric.horizon))
+        if n_scorable < config.min_ic_dates:
+            problems.append(
+                f"the {window.name} window has {n_scorable} scorable signal dates, fewer than "
+                f"min_ic_dates = {config.min_ic_dates}, so no IC series on it can be long enough"
+            )
+    if n_symbols is not None and n_symbols < metric.effective_min_names:
+        problems.append(
+            f"the panel has {n_symbols} symbols, fewer than the {metric.effective_min_names} names a "
+            "cross-sectional rank IC needs on each date"
+        )
+    return problems
+
+
+def _require_capacity(problems: list[str]) -> None:
+    if problems:
+        raise SplitError(
+            "these windows cannot select anything (use a longer date range or more symbols): "
+            + "; ".join(problems)
+        )
 
 
 def behaviour_signature(signal: pd.DataFrame, dates: pd.DatetimeIndex) -> str:
@@ -404,12 +475,27 @@ class SearchResult:
 
         return json_safe({key: value for key, value in self.proposer_provenance.items() if key != "calls"})
 
+    def warnings(self) -> list[str]:
+        """Plain-language reasons why an empty or short selection may not be a null result."""
+
+        notes = []
+        degenerate = int(self.funnel.get("n_rejected_degenerate_validation", 0) or 0)
+        if degenerate:
+            notes.append(
+                f"{degenerate} screened candidate(s) had too few validation dates with a defined IC and were "
+                "rejected as degenerate: they were never tested on validation"
+            )
+        if not self.aborted and self.stop_reason != "budget":
+            notes.append(f"incomplete run: stopped by {self.stop_reason!r} before the budget was used")
+        return notes
+
     def summary(self) -> dict[str, Any]:
         tested = self.multiple_test
         confirm = self.confirmation
         return json_safe(
             {
                 "proposer": self.proposer.get("name"),
+                "warnings": self.warnings(),
                 "n_trials": self.n_trials,
                 "n_evaluated": self.n_evaluated,
                 "n_degenerate": self.n_degenerate,
@@ -480,7 +566,9 @@ def _loader(panel: Panel | PanelLoader) -> tuple[PanelLoader, Panel | None]:
 
 
 def _check_prefix(longer: Panel, shorter: Panel, end: pd.Timestamp, what: str) -> None:
-    if truncate_panel(longer, end).content_sha256 != shorter.content_sha256:
+    # Values, dates and symbols only: the source labels of a longer load may include a
+    # vendor that supplies bars only after ``end``, which is not a change of the data.
+    if panel_values_sha256(truncate_panel(longer, end)) != panel_values_sha256(shorter):
         raise PanelError(f"the data changed between phases: the {what} panel does not extend the earlier one")
 
 
@@ -517,9 +605,17 @@ def run_search(
     if full_panel is not None:
         splits.check_calendar(full_panel.dates)
         start_sha256 = verify_panel_hash(full_panel)
+        _require_capacity(window_capacity_problems(full_panel.dates, splits, config, n_symbols=len(full_panel.symbols)))
     formation_panel = load(splits.formation.end)
     if formation_panel.dates[-1] > splits.formation.end:
         raise SplitError("the loader returned data beyond the formation window")
+    if full_panel is None:
+        # later windows are not loaded yet; the study registry checks them when it fixes the windows
+        _require_capacity(
+            window_capacity_problems(
+                formation_panel.dates, splits, config, n_symbols=len(formation_panel.symbols), windows=("formation",)
+            )
+        )
     if reveal and not is_synthetic(formation_panel):
         if run_dir is None or authorize is None:
             raise ValueError(
@@ -673,7 +769,8 @@ def run_search(
                             formation=stats,
                             **base,
                         )
-                        recent_rejected.append(RejectedFeedback(canonical, trial.codes, trial.message))
+                        # the ledger keeps the counts; proposers get a count-free text (no sample size)
+                        recent_rejected.append(RejectedFeedback(canonical, trial.codes, DEGENERATE_FEEDBACK))
                     else:
                         signature = behaviour_signature(signal, formation_dates) if config.behavioural_dedup else None
                         representative = (
@@ -700,7 +797,10 @@ def run_search(
                         complexity=complexity(node),
                         **base,
                     )
-                    recent_rejected.append(RejectedFeedback(canonical, ("EVAL_ERROR",), trial.message))
+                    # raw exception text can carry shapes or values of the panel: send the type only
+                    recent_rejected.append(
+                        RejectedFeedback(canonical, ("EVAL_ERROR",), f"evaluation failed ({type(exc).__name__})")
+                    )
                 by_hash[digest] = trial
             trials.append(trial)
             new_trials += 1
@@ -1013,10 +1113,12 @@ __all__ = [
     "Trial",
     "WindowStats",
     "behaviour_signature",
+    "default_max_rounds",
     "grammar_card",
     "mean_rank_correlation",
     "nw_p_value",
     "run_search",
     "software_versions",
+    "window_capacity_problems",
     "window_statistics",
 ]

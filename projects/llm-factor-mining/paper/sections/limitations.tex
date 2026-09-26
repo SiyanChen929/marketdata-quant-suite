@@ -8,7 +8,14 @@ evaluation has been run. All claims about LLM-guided search in this draft are
 hypotheses. The benchmark's planted signals and hypothesis H2 were revised
 after the first baseline harness runs had been seen (Section~\ref{sec:setup}
 and the research plan disclose this); the confirmatory seeds exclude the
-seeds already seen.
+seeds already seen. In the same round of revisions the window menu shared by both
+baselines gained the value $1$, so that the library-family signal became
+reachable, and the selection procedure (formation screen plus validation
+confirmation) took its present form; the synthetic benchmark was re-run
+afterwards. It is therefore harness validation, not a confirmatory test.
+H4's synthetic endpoint was later changed from raw recall to recovery and
+null-contrasted recall, after these results showed that raw recall is about
+as high on null markets as on planted ones.
 
 \paragraph{Synthetic benchmark design.} The authors chose the following, and
 rankings on this benchmark need not transfer to real markets:
@@ -19,7 +26,15 @@ rankings on this benchmark need not transfer to real markets:
   \item recovery depends on a correlation threshold of
     \SynRecoveryThreshold{} and the true FDP on a threshold of
     \SynTrueDiscoveryThreshold{};
-  \item recall uses every \SynRecallStride{}th formation date for speed.
+  \item recall uses every \SynRecallStride{}th formation date for speed,
+    and it is about as high on the null markets as on the planted ones: it
+    records that a proposer wrote a close copy of a planted expression, not
+    that search detected a signal;
+  \item the proposer seed depends only on the market seed, so for a given
+    seed the feedback-free random arm evaluates the same expression stream
+    on both SNR levels and on the null market (common random numbers), and
+    genetic programming starts from the same first batch; these cells are
+    not independent samples of the proposer.
 \end{itemize}
 Returns and volumes are independent apart from the planted terms. The
 volume process is not calibrated to any market, and there are no
@@ -39,7 +54,8 @@ short, so power at the lower signal-to-noise level is low.
     only trials with identical per-date ranks; highly correlated variants
     remain separate hypotheses, and for a step-up procedure such clusters
     make the screen less strict. The Benjamini--Yekutieli variant is
-    therefore reported as well.
+    implemented and will be reported alongside; the synthetic results
+    reported here use Benjamini--Hochberg only.
   \item Formation p-values of feedback-driven proposers are not valid for
     false-discovery control; the protocol relies on the validation
     confirmation for its error control.
@@ -59,15 +75,24 @@ short, so power at the lower signal-to-noise level is low.
     panel is in memory.
   \item The classic-library baseline, the compute-matched baseline and the
     ablation wrappers are not implemented or not yet run.
+  \item The arms do not share the whole search space. The LLM may propose
+    anything the validator accepts (windows up to 252 sessions, depth up to
+    10, any literal within the limits), while both baselines draw windows,
+    literals and exponents from fixed menus (eight windows, three literals,
+    two exponents) and random trees have depth at most 4; several library
+    factors, such as a 12-1 momentum, are outside the baselines' support. An RQ1 advantage of the LLM could partly reflect
+    this larger reachable space rather than better proposals.
 \end{itemize}
 
 \paragraph{Contamination controls are partial.}
 \begin{itemize}
-  \item Anonymization removes dates, tickers and sample sizes from prompts,
+  \item Anonymization removes dates, tickers and date counts from prompts,
     and a render-time check guards the harness-written text. The check is
     heuristic: feedback statistics are not checked for year-like numbers,
-    distributional fingerprints of a period cannot be detected, and generic
-    knowledge of documented anomalies cannot be removed.
+    the ratio of a trial's $t$-statistic to its ICIR still implies the
+    approximate formation sample size, distributional fingerprints of a
+    period cannot be detected, and generic knowledge of documented
+    anomalies cannot be removed.
   \item The knowledge-cutoff split depends on the provider's documentation
     of the training-data cutoff and on enough post-cutoff sessions for
     power.

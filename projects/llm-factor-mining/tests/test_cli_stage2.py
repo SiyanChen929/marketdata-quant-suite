@@ -10,7 +10,29 @@ from lfm_helpers import small_market
 from llm_factor_mining.cli import benchmark_llm_factory, build_backend, build_parser, credentials_available, main
 
 
-TINY = ["--n-symbols", "20", "--n-dates", "200", "--snr", "0.4"]
+# 520 sessions: the shortest calendar whose validation and test windows hold the 100 scorable dates
+# that the CLI's default min_ic_dates requires (shorter studies are refused)
+TINY = ["--n-symbols", "20", "--n-dates", "520", "--snr", "0.4"]
+
+
+_MARKETS: dict = {}
+
+
+@pytest.fixture(autouse=True)
+def reuse_synthetic_markets(monkeypatch):
+    """Simulate each synthetic market once per test session (the CLI rebuilds it on every call)."""
+
+    import llm_factor_mining.cli as cli
+
+    original = cli.synthetic_market
+
+    def cached(meta):
+        key = tuple(sorted((name, str(meta[name])) for name in ("n_symbols", "n_dates", "snr", "seed", "lag")))
+        if key not in _MARKETS:
+            _MARKETS[key] = original(meta)
+        return _MARKETS[key]
+
+    monkeypatch.setattr(cli, "synthetic_market", cached)
 
 
 @pytest.fixture()
@@ -92,7 +114,7 @@ def test_cli_two_step_commit_then_reveal(tmp_path, capsys) -> None:
 def test_cli_store_study_flow(tmp_path, monkeypatch, capsys) -> None:
     from quant_marketdata import MarketDataStore
 
-    market = small_market()
+    market = small_market(n_dates=520)
     home = tmp_path / "data"
     MarketDataStore(home).write_bars(market.bars, finality="confirmed")
     monkeypatch.setenv("QUANT_DATA_HOME", str(home))
@@ -117,8 +139,15 @@ def test_cli_store_study_flow(tmp_path, monkeypatch, capsys) -> None:
     assert not (run_dir / "reveal.json").exists()  # store data are never revealed by search
     commitment = result["summary"]["commitment"]
 
+    # the exploration count travels with the result (search output, provenance, reveal output)
+    assert result["registry"]["n_explorations"] == 1 and result["registry"]["n_commits"] == 1
+    provenance = json.loads((run_dir / "provenance.json").read_text())
+    assert provenance["registry_at_commit"]["n_explorations"] == 1
+
     assert main(["reveal", "--run-dir", str(run_dir), "--commitment", commitment]) == 0
-    capsys.readouterr()
+    revealed = json.loads(capsys.readouterr().out)
+    assert revealed["registry"]["n_reveals"] == 1 and revealed["registry"]["n_explorations"] == 1
+    assert json.loads((run_dir / "provenance.json").read_text())["registry_at_reveal"]["n_reveals"] == 1
     other = tmp_path / "run2"
     assert main(["search", "--proposer", "random", "--proposer-seed", "3", "--budget", "12", "--run-dir", str(other), "--data", "store", *study]) == 0
     second = json.loads(capsys.readouterr().out)["summary"]["commitment"]
@@ -137,7 +166,7 @@ def test_cli_search_llm_needs_a_backend_and_credentials(tmp_path, no_credentials
         main(["search", "--proposer", "llm", *run])
     with pytest.raises(SystemExit):
         main(["search", "--proposer", "llm", "--backend", "replay", *run])
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(SystemExit, match="does not exist"):  # one line, not a traceback
         main(["search", "--proposer", "llm", "--backend", "replay", "--replay-file", str(tmp_path / "none.jsonl"), *run])
     with pytest.raises(SystemExit, match="credentials"):
         main(["search", "--proposer", "llm", "--backend", "anthropic", *run])
@@ -184,18 +213,23 @@ def test_benchmark_llm_arm_status_without_credentials(tmp_path, no_credentials) 
 
 def test_cli_benchmark_tiny(tmp_path, capsys) -> None:
     out = tmp_path / "bench"
-    code = main(
-        [
-            "benchmark", "--seeds", "0", "--snr", "0.4", "--null-seeds", "", "--n-symbols", "20", "--n-dates", "220",
-            "--budget", "10", "--batch-size", "5", "--out", str(out), "--runs-dir", str(tmp_path / "runs"),
-        ]
-    )
+    command = [
+        "benchmark", "--seeds", "0", "--snr", "0.4", "--null-seeds", "", "--n-symbols", "20", "--n-dates", "520",
+        "--budget", "10", "--batch-size", "5", "--out", str(out), "--runs-dir", str(tmp_path / "runs"),
+    ]
+    code = main(command)
     assert code == 0
     paths = json.loads(capsys.readouterr().out)
     summary = json.loads(Path(paths["summary_json"]).read_text())
     assert summary["proposers"]["llm"].startswith("not run")
     assert "SYNTHETIC DATA" in Path(paths["summary_md"]).read_text()
-    assert (tmp_path / "runs" / "snr0.4_seed0_random" / "ledger.jsonl").is_file()
+    first = Path(paths["runs_dir"])
+    assert first.parent == tmp_path / "runs" and (first / "snr0.4_seed0_random" / "ledger.jsonl").is_file()
+    # the same command again (e.g. to add the LLM arm) gets a fresh ledger directory instead of crashing
+    assert main([*command]) == 0
+    second = Path(json.loads(capsys.readouterr().out)["runs_dir"])
+    assert second != first and second.parent == first.parent
+    assert (second / "snr0.4_seed0_random" / "ledger.jsonl").is_file()
 
 
 def test_benchmark_script_is_importable() -> None:
@@ -209,3 +243,48 @@ def test_benchmark_script_is_importable() -> None:
     spec.loader.exec_module(module)  # defines main() only; nothing runs on import
     assert callable(module.main)
     assert str(script.parents[1] / "src") in sys.path
+
+
+def test_register_study_refuses_windows_that_could_never_select(tmp_path, monkeypatch, capsys) -> None:
+    from quant_marketdata import MarketDataStore
+
+    market = small_market(n_dates=260)  # 260 sessions: about 50 scorable validation dates
+    home = tmp_path / "data"
+    MarketDataStore(home).write_bars(market.bars, finality="confirmed")
+    monkeypatch.setenv("QUANT_DATA_HOME", str(home))
+    registry = tmp_path / "registry.jsonl"
+    start, end = str(market.panel.dates[0].date()), str(market.panel.dates[-1].date())
+    base = ["register-study", "--registry", str(registry), "--start", start, "--end", end]
+    with pytest.raises(SystemExit, match="not registered: .*validation window has"):
+        main([*base, "--study", "short", "--symbols", ",".join(market.panel.symbols)])
+    with pytest.raises(SystemExit, match="2 symbols"):
+        main([*base, "--study", "narrow", "--symbols", ",".join(market.panel.symbols[:2])])
+    from llm_factor_mining.protocol import StudyRegistry
+
+    assert StudyRegistry(registry).study("short") is None and StudyRegistry(registry).study("narrow") is None
+
+
+def test_common_cli_mistakes_end_with_one_line(tmp_path, monkeypatch) -> None:
+    from quant_marketdata import MarketDataStore
+
+    with pytest.raises(SystemExit, match="^error: calendar of 100 sessions is too short"):
+        main(["search", "--proposer", "random", "--n-dates", "100", "--run-dir", str(tmp_path / "r")])
+    registry = ["register-study", "--registry", str(tmp_path / "reg.jsonl"), "--study", "u1", "--symbols", "AAA,BBB"]
+    dates = ["--start", "2031-01-01", "--end", "2033-12-31"]
+    monkeypatch.delenv("QUANT_DATA_HOME", raising=False)
+    with pytest.raises(SystemExit, match="^error: "):
+        main([*registry, *dates])
+    MarketDataStore(tmp_path / "empty")
+    monkeypatch.setenv("QUANT_DATA_HOME", str(tmp_path / "empty"))
+    with pytest.raises(SystemExit, match="^error: .*no bars"):
+        main([*registry, *dates])
+
+
+def test_benchmark_with_an_unusable_llm_backend_runs_nothing(tmp_path, no_credentials) -> None:
+    out, runs = tmp_path / "out", tmp_path / "runs"
+    common = ["benchmark", "--seeds", "0", "--snr", "0.4", "--null-seeds", "", "--out", str(out), "--runs-dir", str(runs)]
+    with pytest.raises(SystemExit, match="Nothing was run"):
+        main([*common, "--backend", "anthropic"])
+    with pytest.raises(SystemExit, match="Nothing was run"):
+        main([*common, "--backend", "replay", "--replay-file", str(tmp_path / "missing.jsonl")])
+    assert not out.exists() and not runs.exists()

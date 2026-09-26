@@ -15,7 +15,7 @@
     "nearest_reference": "reversal_5d",
     "reasons": []
   },
-  "note": "SYNTHETIC DATA - NOT EVIDENCE ABOUT REAL MARKETS. Pre-registered draw; see benchmark/draw.py.",
+  "note": "SYNTHETIC DATA - NOT EVIDENCE ABOUT REAL MARKETS. Draw procedure fixed in code (benchmark/draw.py) before the draw was run; self-attested, not externally registered.",
   "procedure": {
     "convergence_snrs": [
       0.05,
