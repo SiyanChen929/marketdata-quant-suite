@@ -95,7 +95,7 @@ python projects/llm-factor-mining/scripts/render_paper_tables.py --check
 python projects/marketdata-agent/scripts/render_paper_tables.py --check
 ```
 
-On the recorded software stack (the summary's `Software:` line; `scripts/bootstrap.sh` pins numpy, pandas and scipy to it through [`configs/constraints.txt`](configs/constraints.txt)), the regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line.
+On the recorded software stack (the summary's `Software:` line; `scripts/bootstrap.sh` pins numpy, pandas and scipy to it through [`configs/constraints.txt`](configs/constraints.txt)), the regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line. That check ran on one machine; on other CPUs, floating-point rounding can move near-tied diagnostics in the last reported decimals.
 
 ## System map
 

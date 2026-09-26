@@ -64,6 +64,33 @@ MIN_DISTINCT_VALUES = 10
 MIN_DISTINCT_SHARE = 0.95
 MAX_ABS_CORRELATION = 0.3
 CONVERGENCE_SNRS = (0.05, 0.15)
+# Tolerance for float fields when a re-run draw is compared with the committed
+# record.  Across CPUs, rounding can flip the sign of values that are zero in
+# exact arithmetic (e.g. a rolling covariance of a constant window), which
+# reorders a few near-tied ranks and moves correlation diagnostics around the
+# fifth decimal (observed on a CI runner: 0.053676 vs 0.053681).  Decisions,
+# expressions and reasons must still match exactly.
+RECORD_FLOAT_TOLERANCE = 1e-3
+
+
+def records_agree(left: Any, right: Any, *, abs_tol: float = RECORD_FLOAT_TOLERANCE) -> bool:
+    """Whether two JSON-like draw records agree: floats within ``abs_tol``, everything else exactly."""
+
+    if isinstance(left, bool) or isinstance(right, bool):
+        return left is right
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        if isinstance(left, int) and isinstance(right, int):
+            return left == right
+        return math.isclose(float(left), float(right), rel_tol=0.0, abs_tol=abs_tol)
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(
+            records_agree(left[key], right[key], abs_tol=abs_tol) for key in left
+        )
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(
+            records_agree(a, b, abs_tol=abs_tol) for a, b in zip(left, right)
+        )
+    return left == right
 
 
 def candidate_tree(k: int) -> Node:

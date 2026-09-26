@@ -9,7 +9,8 @@ each rejection; the accepted expression must equal
 
 By default the script only *verifies*: it re-runs the draw and compares the
 record with the committed ``results/planted_signal_draw.json`` without
-writing anything.  ``--out PATH`` writes the record to ``PATH`` instead.
+writing anything.  Decisions, expressions and reasons must match exactly; float
+fields within ``RECORD_FLOAT_TOLERANCE`` (CPU rounding can move them slightly).  ``--out PATH`` writes the record to ``PATH`` instead.
 
 Usage (from the repository root)::
 
@@ -32,7 +33,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 if str(PROJECT / "src") not in sys.path:  # allow running without an editable install
     sys.path.insert(0, str(PROJECT / "src"))
 
-from llm_factor_mining.benchmark.draw import draw_planted_signal  # noqa: E402
+from llm_factor_mining.benchmark.draw import RECORD_FLOAT_TOLERANCE, draw_planted_signal, records_agree  # noqa: E402
 from llm_factor_mining.benchmark.synthetic import DRAWN_PLANTED, FIXED_PLANTED  # noqa: E402
 from llm_factor_mining.jsonutil import json_safe, write_json  # noqa: E402
 
@@ -62,10 +63,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"wrote {args.out}")
         return 0
     committed = json.loads(COMMITTED.read_text(encoding="utf-8"))
-    if json.loads(json.dumps(json_safe(record))) != committed:
+    if not records_agree(json.loads(json.dumps(json_safe(record))), committed):
         print(f"the re-run draw differs from the committed {COMMITTED}", file=sys.stderr)
         return 1
-    print(f"matches the committed {COMMITTED} (nothing written)")
+    print(f"matches the committed {COMMITTED} (floats within {RECORD_FLOAT_TOLERANCE:g}; nothing written)")
     return 0
 
 

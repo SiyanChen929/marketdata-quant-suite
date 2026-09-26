@@ -403,7 +403,11 @@ can be run again without clearing earlier ledgers. The run is deterministic: on
 both arms) with a different `PYTHONHASHSEED` reproduced their ledger heads and
 every scored field. On 2026-09-26 a full re-run with the current code (into a
 scratch `--out`) reproduced every field of `summary.json`, ledger heads
-included, except the timings and the recorded command line.
+included, except the timings and the recorded command line. These checks ran
+on one machine. On other CPUs, floating-point rounding can reorder a few
+near-tied factor values; on a GitHub Actions runner this moved one draw
+diagnostic in the fifth decimal (0.053676 vs 0.053681) without changing any
+decision, so the draw check compares floats within 1e-3.
 
 - The recorded runtime is 332.8 s.
 - Software: Python 3.11.15, numpy 2.4.6, pandas 2.3.3, scipy 1.17.1.

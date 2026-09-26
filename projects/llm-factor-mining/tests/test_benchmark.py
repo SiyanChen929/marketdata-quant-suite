@@ -201,7 +201,12 @@ def test_planted_signal_draw_is_reproducible() -> None:
     from pathlib import Path
 
     from llm_factor_mining.benchmark import DRAWN_PLANTED, FIXED_PLANTED
-    from llm_factor_mining.benchmark.draw import assess_candidate, candidate_tree
+    from llm_factor_mining.benchmark.draw import (
+        MAX_ABS_CORRELATION,
+        RECORD_FLOAT_TOLERANCE,
+        assess_candidate,
+        candidate_tree,
+    )
     from llm_factor_mining.dsl.library import LIBRARY
     from llm_factor_mining.dsl.nodes import to_expression
 
@@ -220,7 +225,24 @@ def test_planted_signal_draw_is_reproducible() -> None:
     check = assess_candidate(
         candidate_tree(accepted["k"]), engine, references, fixed_planted=FIXED_PLANTED, check_convergence=False
     )
-    assert check["reasons"] == [] and check["max_abs_corr"] == pytest.approx(accepted["max_abs_corr"])
+    # The decision must reproduce exactly; the diagnostic correlation only up to
+    # cross-CPU rounding (see RECORD_FLOAT_TOLERANCE), far inside the 0.3 margin.
+    assert check["reasons"] == []
+    assert check["max_abs_corr"] == pytest.approx(accepted["max_abs_corr"], abs=RECORD_FLOAT_TOLERANCE)
+    assert check["max_abs_corr"] + RECORD_FLOAT_TOLERANCE < MAX_ABS_CORRELATION
+
+
+def test_draw_records_agree_tolerates_float_noise_but_not_decision_changes() -> None:
+    from llm_factor_mining.benchmark.draw import records_agree
+
+    base = {"accepted": {"k": 40, "expression": "e", "max_abs_corr": 0.05368131}, "rejected": [{"reasons": ["C1"]}]}
+    noisy = {"accepted": {"k": 40, "expression": "e", "max_abs_corr": 0.05367588}, "rejected": [{"reasons": ["C1"]}]}
+    assert records_agree(noisy, base)
+    assert not records_agree({**noisy, "accepted": {**noisy["accepted"], "k": 41}}, base)
+    assert not records_agree({**noisy, "accepted": {**noisy["accepted"], "max_abs_corr": 0.06}}, base)
+    assert not records_agree({**noisy, "rejected": [{"reasons": ["C2"]}]}, base)
+    assert not records_agree({**noisy, "rejected": []}, base)
+    assert not records_agree({"flag": True}, {"flag": 1})
 
 
 def test_benchmark_llm_arm_with_fake_backend(tmp_path) -> None:
