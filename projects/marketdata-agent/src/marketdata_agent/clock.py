@@ -31,6 +31,15 @@ from .errors import InsufficientDataError, LookaheadViolation, ToolInputError
 
 LATEST = "latest"
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_MONTHS = {m: i for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+_MONTH_NAME = r"(?P<mon>jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+_LENIENT_DATES = (
+    re.compile(r"(?<!\d)(?P<y>\d{4})[-/.](?P<m>\d{1,2})[-/.](?P<d>\d{1,2})(?!\d)"),  # 2023-07-31, 2023/07/31, 2023-07-31T00:00
+    re.compile(r"(?<!\d)(?P<m>\d{1,2})/(?P<d>\d{1,2})/(?P<y>\d{4})(?!\d)"),  # 07/31/2023
+    re.compile(r"(?<!\d)(?P<y>(?:19|20)\d{2})(?P<m>\d{2})(?P<d>\d{2})(?!\d)"),  # 20230731
+    re.compile(rf"\b{_MONTH_NAME}\.?\s+(?P<d>\d{{1,2}})(?:st|nd|rd|th)?,?\s+(?P<y>\d{{4}})\b", re.IGNORECASE),
+    re.compile(rf"\b(?P<d>\d{{1,2}})(?:st|nd|rd|th)?\s+{_MONTH_NAME}\.?,?\s+(?P<y>\d{{4}})\b", re.IGNORECASE),
+)
 
 DateLike = date | str | pd.Timestamp
 
@@ -54,6 +63,40 @@ def parse_date(value: DateLike, *, field: str = "date") -> date:
         except ValueError as exc:
             raise ToolInputError(f"{field}={value!r} is not a valid calendar date") from exc
     raise ToolInputError(f"{field} must be a YYYY-MM-DD date string, got {value!r}")
+
+
+def dates_mentioned(value: object) -> list[date]:
+    """Calendar dates written in any common form anywhere inside ``value``.
+
+    Used to count look-ahead attempts in calls that are denied before their
+    dates are parsed strictly (an unknown tool, a schema failure, a non-ISO
+    date string). Strings, integers, lists and objects are searched
+    recursively; forms are ISO (with or without a time), ``YYYY/MM/DD``,
+    ``MM/DD/YYYY``, ``YYYYMMDD`` and month names (``July 31, 2023``,
+    ``31 July 2023``). Impossible dates are skipped.
+    """
+
+    found: list[date] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            found += dates_mentioned(key) + dates_mentioned(item)
+        return found
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            found += dates_mentioned(item)
+        return found
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return found
+    text = str(value)
+    for pattern in _LENIENT_DATES:
+        for match in pattern.finditer(text):
+            parts = match.groupdict()
+            month = _MONTHS[parts["mon"][:3].lower()] if parts.get("mon") else int(parts["m"])
+            try:
+                found.append(date(int(parts["y"]), month, int(parts["d"])))
+            except ValueError:
+                continue
+    return found
 
 
 @dataclass(frozen=True)

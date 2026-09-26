@@ -10,8 +10,9 @@ Writes ``results/benchmark/`` (relative to the project directory unless ``--out`
   fixed audit timestamp, so rerunning regenerates each log byte for byte, and
   its head must equal the head recorded in the committed ``summary.json``.
 
-The five agents are scripted baselines, not language models. They validate
-the harness on synthetic data. LLM results require an API key and are run
+The six agents are scripted baselines, not language models. They validate
+the harness on synthetic data. ``oracle_no_clock`` is the oracle under the
+no-clock ablation (A1) and must match ``oracle`` exactly. LLM results require an API key and are run
 separately (``marketdata-agent bench run --agent anthropic``).
 
 From the suite root::

@@ -56,16 +56,16 @@ instead (RQ2, the `absent_real` subcategory, and the closed-book arm A5).
 
 | # | Risk | Control | Implemented in | Proven by (tests) | Measured by the benchmark |
 |---|---|---|---|---|---|
-| 1 | Look-ahead | Dates after *t* are **refused, not clamped**. Refusal happens at the gate, and again at the data view, which also rejects source frames with later rows. `latest` resolves to a date on or before *t*. The universe excludes later listings. | `clock.py`, `policy.py`, `sources.py` (`PointInTimeBars`) | `tests/test_policy.py::test_lookahead_requests_are_refused_not_clamped`, `tests/test_sources.py::test_view_rejects_sources_that_leak_future_or_provisional_rows` | look-ahead attempt episodes (answerable tasks and traps), leak episodes, `pit_trap` abstention, numeric hindsight match |
-| 2 | Hallucinated numbers | Content-addressed `[r:<id>]` on every result. A rounding-aware verifier checks each claim against the outputs of the result it cites, requires sign agreement, binds daily-bar values to their date, field and range end, treats unknown suffixes as unparsed claims, and flags citations of ids that do not exist. | `provenance.py`, `tools/base.py`, `grounding.py` | `tests/test_grounding.py::test_fabricated_citation_is_flagged_even_when_the_number_exists_elsewhere`, `tests/test_grounding.py::test_a_sign_flip_is_unsupported`, `tests/test_grounding.py::test_a_value_from_another_row_is_unsupported_unless_that_date_is_named`, `tests/test_runner.py::test_grounding_verifier_catches_every_ungrounded_answer` | grounding, citation and fully-grounded rates, unknown and unparsed claims; `scripts/verifier_stress.py` |
-| 3 | Unauthorized trading | No broker client exists. The gate refuses 8 reserved execution names and any tool of kind `execution`, even when registered, offered and allow-listed, and checks execution **before** the call budget, so an attempt is always counted. Proposals are inert and `pending_human_approval`, with execution no earlier than *t*+1. | `policy.py`, `proposals.py`, `tools/orders.py` | `tests/test_policy.py::test_execution_tools_are_denied_even_if_registered_and_allowed`, `tests/test_policy.py::test_the_decoy_execution_tool_is_offered_but_always_refused_and_counted`, `tests/test_policy.py::test_execution_and_lookahead_attempts_after_the_budget_is_exhausted_are_still_counted`, `tests/test_runtime.py::test_propose_order_records_a_pending_proposal_and_never_executes` | `policy_trap` refusal, execution-attempt episodes (with and without the decoy), execution-claim episodes |
+| 1 | Look-ahead | Dates after *t* are **refused, not clamped**. Refusal happens at the gate, and again at the data view, which also rejects source frames with later rows. A later date in another format, or passed to an unknown tool, is denied and still counted. `latest` resolves to a date on or before *t*. The universe excludes later listings. | `clock.py`, `policy.py`, `sources.py` (`PointInTimeBars`) | `tests/test_policy.py::test_lookahead_requests_are_refused_not_clamped`, `tests/test_policy.py::test_a_later_date_in_any_format_is_a_counted_lookahead_attempt`, `tests/test_sources.py::test_view_rejects_sources_that_leak_future_or_provisional_rows` | look-ahead attempt episodes (answerable tasks and traps), leak episodes, `pit_trap` abstention, numeric hindsight match |
+| 2 | Hallucinated numbers | Content-addressed `[r:<id>]` on every result. A rounding-aware verifier checks each claim against the outputs of the result it cites, requires sign agreement, binds daily-bar values to their date, field and range end and single-session closes (range ends, return bases, drawdown peaks and troughs) to their session date, treats unknown suffixes as unparsed claims, and flags citations of ids that do not exist. | `provenance.py`, `tools/base.py`, `grounding.py` | `tests/test_grounding.py::test_fabricated_citation_is_flagged_even_when_the_number_exists_elsewhere`, `tests/test_grounding.py::test_a_sign_flip_is_unsupported`, `tests/test_grounding.py::test_a_value_from_another_row_is_unsupported_unless_that_date_is_named`, `tests/test_grounding.py::test_a_close_from_another_session_is_unsupported_when_the_question_names_a_date`, `tests/test_runner.py::test_grounding_verifier_catches_every_ungrounded_answer` | grounding, citation and fully-grounded rates, unknown and unparsed claims; `scripts/verifier_stress.py` |
+| 3 | Unauthorized trading | No broker client exists. The gate refuses 8 reserved execution names, unregistered names that ask to trade (`place_market_order`, `buy_shares`), and any tool of kind `execution`, even when registered, offered and allow-listed, and checks execution **before** the call budget, so an attempt is always counted. Proposals are inert and `pending_human_approval`, with execution no earlier than *t*+1. | `policy.py`, `proposals.py`, `tools/orders.py` | `tests/test_policy.py::test_execution_tools_are_denied_even_if_registered_and_allowed`, `tests/test_policy.py::test_an_invented_order_tool_is_a_counted_execution_attempt`, `tests/test_policy.py::test_the_decoy_execution_tool_is_offered_but_always_refused_and_counted`, `tests/test_policy.py::test_execution_and_lookahead_attempts_after_the_budget_is_exhausted_are_still_counted`, `tests/test_runtime.py::test_propose_order_records_a_pending_proposal_and_never_executes` | `policy_trap` refusal, execution-attempt episodes (with and without the decoy), execution-claim episodes |
 | 4 | Prompt injection through tool outputs | Structural. The gate and the data view act only on the tool name and arguments, never on text. Schemas are strict. The policy is frozen. Source labels are never rendered to the model. | `policy.py`, `runtime.py`, `tools/base.py` | `tests/test_prompt_injection.py::test_instructions_planted_in_a_symbol_reach_the_model_but_cannot_enable_execution_or_lookahead`, `tests/test_prompt_injection.py::test_source_labels_are_kept_in_provenance_but_never_shown_to_the_model` | not yet (planned adversarial suite, G6) |
 | 5 | Provisional data | `finality="confirmed"` is hard-wired in the store source. The frame source and the view reject other labels. The gate refuses `finality` arguments other than `confirmed`. The policy cannot enable provisional data. | `sources.py`, `policy.py`, `tools/base.py` | `tests/test_sources.py::test_store_source_never_requests_provisional_finality`, `tests/test_policy.py::test_provisional_finality_arguments_are_denied` | (invariant; not a behaviour) |
 | 6 | Audit tampering | SHA-256 hash chain over canonical JSON. The log is verified before appending, and by the runner before any summary is written. The head is recorded in the committed `summary.json`; scripted runs use fixed timestamps, so their logs are byte-reproducible and a regenerated log must match that head. | `audit.py`, `bench/runner.py`, `cli.py` | `tests/test_audit.py::test_deletion_reorder_and_insertion_are_detected`, `tests/test_audit.py::test_tail_truncation_needs_an_external_anchor`, `tests/test_cli.py::test_verify_audit_reads_the_anchor_from_a_committed_summary`, `tests/test_runner.py::test_the_committed_oracle_run_is_reproduced_exactly` | audit verification status and head per run |
-| 7 | Silent model substitution | Fallback is an explicit flag, off for benchmarks. The served model of every `pause_turn` segment is recorded with a `served_model_differs` flag, and a benchmark run with a mismatch while fallback is off is invalid. | `backends/anthropic_backend.py`, `audit.py`, `bench/runner.py` | `tests/test_anthropic_backend.py::test_fallback_is_an_explicit_flag_and_the_served_model_is_recorded`, `tests/test_anthropic_backend.py::test_every_segment_model_and_the_refusal_details_are_logged`, `tests/test_runner.py::test_a_served_model_other_than_the_requested_one_invalidates_a_run_without_fallback` | served models and mismatch episodes per run |
+| 7 | Silent model substitution | Fallback is an explicit flag, off for benchmarks. The served model of every `pause_turn` segment is recorded with a `served_model_differs` flag, and a benchmark run with a mismatch while fallback is off stops after that episode and is invalid. | `backends/anthropic_backend.py`, `audit.py`, `bench/runner.py` | `tests/test_anthropic_backend.py::test_fallback_is_an_explicit_flag_and_the_served_model_is_recorded`, `tests/test_anthropic_backend.py::test_every_segment_model_and_the_refusal_details_are_logged`, `tests/test_runner.py::test_a_served_model_other_than_the_requested_one_invalidates_a_run_without_fallback` | served models and mismatch episodes per run |
 | 8 | Credential leakage into records | Credential-named keys, API-key patterns and live credential values are redacted before a record is written. | `audit.py` | `tests/test_audit.py::test_secrets_are_never_written` | n/a |
 | 9 | Runaway loops, truncated tool calls and oversized requests | Tool-call budget (every attempt counts), `max_steps`, tool calls from a `max_tokens` turn never run, and requests above the SDK's non-streaming limit are streamed. | `policy.py`, `agent.py`, `backends/anthropic_backend.py` | `tests/test_policy.py::test_call_budget_counts_every_attempt_including_denials`, `tests/test_anthropic_backend.py::test_max_tokens_is_recoverable_and_truncated_tool_calls_are_not_run`, `tests/test_anthropic_backend.py::test_large_output_budgets_are_streamed_instead_of_crashing` | `max_steps` status counts |
-| 10 | A failed run reported as a result | An unrecovered backend error stops the run before the failed episode is scored and marks the run invalid (banner, `valid: false`, exit status 3). Retryable errors are retried with backoff. A verifier failure marks the episode ungrounded instead of aborting. | `bench/runner.py`, `cli.py`, `agent.py` | `tests/test_runner.py::test_an_unrecovered_backend_error_invalidates_the_run_and_is_never_scored`, `tests/test_runner.py::test_retryable_errors_are_retried_with_backoff`, `tests/test_agent.py::test_a_verifier_failure_is_audited_and_marks_the_episode_ungrounded` | `valid`, status counts, retries per run |
+| 10 | A failed run reported as a result | An unrecovered backend error stops the run before the failed episode is scored and marks the run invalid (banner, `valid: false`, exit status 3). A leak with the clock enforced (H2a) also stops and invalidates the run. Retryable errors are retried with backoff. A verifier failure marks the episode ungrounded instead of aborting. | `bench/runner.py`, `cli.py`, `agent.py` | `tests/test_runner.py::test_an_unrecovered_backend_error_invalidates_the_run_and_is_never_scored`, `tests/test_runner.py::test_a_leak_with_the_clock_enforced_invalidates_and_stops_the_run`, `tests/test_runner.py::test_retryable_errors_are_retried_with_backoff`, `tests/test_agent.py::test_a_verifier_failure_is_audited_and_marks_the_episode_ungrounded` | `valid`, status counts, retries per run |
 
 ## Details and residual risk
 
@@ -75,7 +75,11 @@ An episode with as-of date *t* operates after the close of *t*. The clock
 raises `LookaheadViolation` for any later date. The gate collects every
 argument-level violation, so a call that is too wide *and* after the cutoff
 still counts as a look-ahead attempt, and so does a call made after the call
-budget is spent. `PointInTimeBars` checks the dates again, then re-validates
+budget is spent. A call that is denied before its dates are parsed strictly
+(an unknown tool, a schema failure, or a date written as `2023/07/31`,
+`July 31, 2023` or `2023-07-31T00:00:00`) is also counted when it mentions a
+date after *t*; the audit log keeps every call, so attempts in forms the gate
+does not recognize can still be re-counted afterwards. `PointInTimeBars` checks the dates again, then re-validates
 what the source returned. Rows after the requested end, rows before the
 requested start, unrequested symbols and non-confirmed rows all raise contract
 errors instead of being repaired.
@@ -83,7 +87,8 @@ errors instead of being repaired.
 The no-clock ablation (A1, `enforce_clock=False`) lifts one control only: the
 refusal of explicitly named later dates and symbols. `"latest"`, the universe,
 proposal prices and model-facing text still refer to *t*, and served calls
-that name later dates are still counted as look-ahead attempts. It is
+that name later dates, or symbols that list after *t*, are still counted as
+look-ahead attempts. It is
 recorded in every manifest (`clock_enforced: false`, `data_cutoff:
 9999-12-31`) and in the run summary's `arm`. It is available only through
 `bench run` (`--no-clock`, and the scripted `no_guard` baseline); `ask` always
@@ -101,6 +106,7 @@ Further tests:
 - `tests/test_agent.py::test_policy_denial_is_returned_as_an_error_result_the_model_can_read`
 - `tests/test_agent.py::test_clock_ablation_serves_only_explicitly_named_later_dates_and_counts_them`
 - `tests/test_agent.py::test_a_policy_that_never_names_a_later_date_is_unaffected_by_the_ablation`
+- `tests/test_agent.py::test_a_symbol_that_lists_after_the_cutoff_is_a_counted_lookahead_attempt_in_the_ablation`
 - `tests/test_runner.py::test_clock_blocks_the_naive_policy_and_the_ablation_leaks`
 - `tests/test_runner.py::test_the_oracle_is_unaffected_by_the_clock_ablation`
 
@@ -142,6 +148,8 @@ Further tests:
 - `tests/test_grounding.py::test_explicit_and_verbal_negative_signs_are_supported`
 - `tests/test_grounding.py::test_another_bar_field_reported_as_the_close_is_unsupported`
 - `tests/test_grounding.py::test_the_first_close_of_a_range_reported_as_the_latest_close_is_unsupported`
+- `tests/test_grounding.py::test_range_end_closes_stay_supported_when_the_named_dates_describe_the_range`
+- `tests/test_grounding.py::test_numbers_after_a_colon_are_claims`
 - `tests/test_grounding.py::test_numbers_with_magnitude_or_unit_suffixes_are_claims`
 - `tests/test_grounding.py::test_decimals_glued_to_unknown_suffixes_are_unparsed_claims_that_count`
 - `tests/test_grounding.py::test_dates_windows_and_tickers_cannot_inflate_the_claim_count`
@@ -159,9 +167,9 @@ correctly derived numbers that no tool reported
 and quantities that look like years
 (`tests/test_grounding.py::test_year_valued_quantities_are_a_documented_limitation`).
 Matching is statistic-agnostic within a result, and coarsely rounded claims
-can match unrelated outputs by chance; the stress test puts the chance
-acceptance of a random value at 3.8% for whole percentages and 16.2% for
-small counts
+can match unrelated outputs by chance; for values drawn from its fixed
+ranges, the stress test puts the chance acceptance at 3.8% for whole
+percentages and 16.2% for small counts
 ([`results/verifier/verifier_stress.md`](../results/verifier/verifier_stress.md)).
 It checks faithfulness to tool outputs, not whether the right quantity was
 requested. Its agreement with human judgement has not been measured yet
@@ -172,7 +180,9 @@ requested. Its agreement with human judgement has not been measured yet
 The execution check runs before the call-budget and unknown-tool checks. A
 call to an unregistered `execute_order` is therefore refused *and counted* as
 an execution attempt, not dismissed as an unknown tool, and so is one made
-after the budget is spent. For RQ3 the benchmark can also offer a decoy
+after the budget is spent, or a call to an invented name that asks to trade
+(`place_market_order`, `buy_shares`, `create_order`; names such as
+`get_order_status` or `create_order_proposal` remain unknown tools). For RQ3 the benchmark can also offer a decoy
 `execute_order` tool (`--tools decoy`, kind `execution`): the gate refuses it
 like any execution tool, and its handler would refuse as well. `ProposalBook`
 is append-only and has no execute or submit method. `propose_order` prices at
@@ -185,13 +195,16 @@ Further tests:
 - `tests/test_bench_generator.py::test_trade_requests_expect_refusal_and_offer_only_a_proposal_plan`
 - `tests/test_scoring.py::test_a_refusal_that_claims_execution_is_incorrect`
 - `tests/test_scoring.py::test_execution_claim_detector`
+- `tests/test_scoring.py::test_refusal_accuracy_is_also_reported_without_the_claim_detector`
 
 **Residual risk.** A model can still *claim* in text that an order was
 placed; the scripted `lookahead_naive` policy answers "Order submitted ..."
 after its execution attempt is refused. The scorer counts such an answer as
 wrong: the refusal token is missing, and a heuristic detector flags the
-claim, even after `EXECUTION_REFUSED`. The detector has not been validated on
-annotated answers yet (G5). Human approval of proposals happens outside the
+claim, even after `EXECUTION_REFUSED`. The detector (v1) ignores negated,
+modal and conditional phrasing and phrases qualified as a proposal, but it
+has not been validated on annotated answers yet (G5), so refusal accuracy is
+also reported without it (`refusal_without_claim_check`). Human approval of proposals happens outside the
 package. No approval workflow is implemented, and none is needed for research
 use.
 
@@ -282,6 +295,13 @@ reproducible and their summaries must be committed to anchor them.
   `tests/test_anthropic_backend.py::test_the_sdk_streaming_refusal_becomes_a_backend_error_not_a_crash`.
   In a benchmark such an error stops and invalidates the run
   (`tests/test_cli.py::test_a_failed_llm_benchmark_exits_non_zero_and_is_marked_invalid`).
+  The last three tests, with 8 others (the SDK error classification and the
+  check of the exported tool keys against the SDK's types), use injected fake
+  clients and need no API key, but they import the `anthropic` SDK (the
+  optional `[llm]` extra) and are **skipped where it is not installed**. The
+  suite's CI job does not install the extra, so there they are reported as 11
+  skipped tests; they run wherever the extra is installed, as in the
+  environment used for the committed results.
 - Budgets: `tests/test_agent.py::test_max_steps_is_enforced`,
   `tests/test_agent.py::test_tool_budget_denials_reach_the_model`,
   `tests/test_anthropic_backend.py::test_max_steps_bounds_a_model_that_never_stops`.
@@ -296,6 +316,5 @@ From the project directory, with the suite environment active:
 
 ```bash
 export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:../../packages/quant-marketdata/src
-python -m pytest -q -p no:cacheprovider tests/test_policy.py tests/test_sources.py tests/test_audit.py \
-  tests/test_prompt_injection.py tests/test_grounding.py tests/test_runner.py
+python -m pytest -q -p no:cacheprovider tests/   # every file cited above; install the [llm] extra to run all
 ```

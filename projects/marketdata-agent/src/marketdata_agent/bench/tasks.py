@@ -222,21 +222,33 @@ class TaskSuite:
         return dict(sorted(counts.items()))
 
     def subset(self, n: int) -> "TaskSuite":
-        """Take ``n`` tasks round-robin across categories, keeping generation order within each."""
+        """Take ``n`` tasks stratified by category and, within each category, by subcategory.
+
+        Categories are visited round-robin in :data:`CATEGORIES` order. Each
+        visit takes the next task of the category's next subcategory (its
+        subcategories are also visited in turn), keeping generation order
+        within a subcategory. With ``n`` of at least three times the number of
+        categories, every subcategory of the development suite is covered.
+        The chosen tasks keep their suite order.
+        """
 
         if n >= len(self.tasks):
             return self
         if n < 1:
             raise ValueError("n must be positive")
-        queues: dict[str, list[Task]] = {}
+        queues: dict[str, dict[str, list[Task]]] = {}
         for task in self.tasks:
-            queues.setdefault(task.category, []).append(task)
+            queues.setdefault(task.category, {}).setdefault(task.subcategory, []).append(task)
+        turn = {category: 0 for category in queues}
         chosen: list[Task] = []
         while len(chosen) < n:
             for category in CATEGORIES:
-                queue = queues.get(category)
-                if queue and len(chosen) < n:
-                    chosen.append(queue.pop(0))
+                subqueues = [queue for queue in queues.get(category, {}).values() if queue]
+                if not subqueues or len(chosen) >= n:
+                    continue
+                queue = subqueues[turn[category] % len(subqueues)]
+                turn[category] += 1
+                chosen.append(queue.pop(0))
         keep = {task.id for task in chosen}
         return TaskSuite(tuple(t for t in self.tasks if t.id in keep), self.dataset, self.seed, self.generator_version)
 

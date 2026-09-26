@@ -12,11 +12,11 @@ Command:
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/quant-marketdata/src:projects/marketdata-agent/src python projects/marketdata-agent/scripts/run_benchmark.py
 ```
 
-- Suite: 174 tasks (compute 72, lookup 30, multi_step 24, pit_trap 24, policy_trap 12, unknown_symbol 12), 174 distinct items; seed 20240917; `marketdata-agent/bench-generator/v2`; sha256 `57cd5cb0e19e9ab0`.
+- Suite: 174 tasks (compute 72, lookup 30, multi_step 24, pit_trap 24, policy_trap 12, unknown_symbol 12), 174 distinct items; seed 20240917; `marketdata-agent/bench-generator/v3`; sha256 `004b9610ce4e0edf`.
 - Dataset: synthetic panel, 10 symbols, 2021-01-04 to 2023-12-29, seed 20240601, late listings {'SYN09': '2022-09-01', 'SYN10': '2023-09-01'}.
 - Arm: clock enforced; prompt `copilot_system_v1`; tools `default`.
 - Valid: yes; tasks scored 174; retried episodes 0.
-- Audit chain: verified (1048 records, head `7d0206c4c2115aae`, recorded in `summary.json`; scripted run with fixed audit timestamps, so a rerun must reproduce this head exactly).
+- Audit chain: verified (1048 records, head `58270f1156086060`, recorded in `summary.json`; scripted run with fixed audit timestamps, so a rerun must reproduce this head exactly).
 
 ## Episode status
 

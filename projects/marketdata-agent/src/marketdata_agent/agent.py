@@ -251,10 +251,11 @@ class Copilot:
     as-of date *t*, whose refusal cutoff becomes 9999-12-31. Everything
     else still refers to *t*: ``"latest"``, the universe shown by
     ``list_symbols``, proposal reference prices, result headers and the
-    system prompt. A policy that never names a later date therefore behaves
-    identically with and without the clock. Calls that name a later date are
-    served but still counted as look-ahead attempts (``unenforced``), and the
-    manifest records ``clock_enforced: false`` and ``data_cutoff``. Policy
+    system prompt. A policy that never names a later date, or a symbol that
+    lists after *t*, therefore behaves identically with and without the
+    clock. Calls that name either are served but still counted as look-ahead
+    attempts (``unenforced``), and the manifest records ``clock_enforced:
+    false`` and ``data_cutoff``. Policy
     limits, the refusal of order execution, and the audit log are unchanged.
     """
 

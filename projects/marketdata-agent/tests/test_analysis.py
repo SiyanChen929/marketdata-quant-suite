@@ -69,3 +69,23 @@ def test_power_helpers():
     assert power_threshold_clustered([30] * 10, 0.9, 0.95, 0.2, n_sim=4000) < independent  # clustering costs power
     n = noninferiority_paired_n(0.10, 0.05)
     assert n == math.ceil(0.10 * (1.6448536 + 0.8416212) ** 2 / 0.05**2)
+
+
+def test_mcnemar_power_known_values():
+    from marketdata_agent.bench.analysis import mcnemar_power
+
+    # With no discordance against arm 1, the one-sided exact test needs b >= 5 at alpha 0.05 (0.5**5 < 0.05 < 0.5**4).
+    assert mcnemar_power(5, 1.0, 0.0) == pytest.approx(1.0)
+    assert mcnemar_power(5, 0.5, 0.0) == pytest.approx(0.5**5)
+    assert mcnemar_power(4, 1.0, 0.0) == 0.0
+    assert mcnemar_power(100, 0.0, 0.0) == 0.0
+    assert mcnemar_power(300, 0.05, 0.0) > mcnemar_power(300, 0.05, 0.01) > mcnemar_power(300, 0.02, 0.01)
+
+
+def test_the_holm_adjusted_sweep_size_is_the_preregistered_one():
+    from marketdata_agent.bench import design
+    from marketdata_agent.bench.analysis import noninferiority_paired_n
+
+    needed = noninferiority_paired_n(0.2, 0.05, alpha=0.05 / design.HOLM_COMPARISONS)
+    answerable_per_suite = sum(n for (category, _), n in design.EVALUATION_COUNTS.items() if category in {"lookup", "compute", "multi_step"})
+    assert needed == 628 and design.SWEEP_SUITES * answerable_per_suite >= needed

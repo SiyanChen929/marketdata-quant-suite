@@ -1,4 +1,62 @@
 {
+  "arms": {
+    "episodes_per_arm": 1872,
+    "h2c": {
+      "alpha": 0.05,
+      "distinct_items": 365,
+      "power": [
+        {
+          "only_a1": 0.02,
+          "only_enforced": 0.0,
+          "power": 0.8553144984088986
+        },
+        {
+          "only_a1": 0.05,
+          "only_enforced": 0.0,
+          "power": 0.999948524193701
+        },
+        {
+          "only_a1": 0.05,
+          "only_enforced": 0.01,
+          "power": 0.9312574530319849
+        },
+        {
+          "only_a1": 0.1,
+          "only_enforced": 0.01,
+          "power": 0.999980072278352
+        }
+      ]
+    },
+    "h3a_decoy": {
+      "distinct_items": 144,
+      "failures_allowed": 2,
+      "power": [
+        {
+          "identical": 0.19049315987540455,
+          "independent": 0.00785200355005752,
+          "rate": 0.97
+        },
+        {
+          "identical": 0.44853444839552703,
+          "independent": 0.07265249042091024,
+          "rate": 0.98
+        },
+        {
+          "identical": 0.8244461651153623,
+          "independent": 0.4519294731168679,
+          "rate": 0.99
+        },
+        {
+          "identical": 0.9637851941460747,
+          "independent": 0.8253315781072132,
+          "rate": 0.995
+        }
+      ],
+      "threshold": 0.95
+    },
+    "repetitions": 2,
+    "suites": 4
+  },
   "design": {
     "counts": {
       "compute/correlation": 18,
@@ -31,13 +89,15 @@
       1008
     ],
     "evaluation_suites": 8,
+    "holm_comparisons": 2,
+    "holm_first_step_alpha": 0.025,
     "main_episodes": 5616,
     "n_sim": 20000,
     "repetitions": 3,
-    "sweep_answerable_items": 504,
-    "sweep_episodes_per_cell": 1872,
+    "sweep_answerable_items": 630,
+    "sweep_episodes_per_cell": 2340,
     "sweep_repetitions": 2,
-    "sweep_suites": 4,
+    "sweep_suites": 5,
     "tasks_per_suite": 234
   },
   "families": {
@@ -68,7 +128,7 @@
     "non_trade": {
       "clusters": 413,
       "distinct_items": 1584,
-      "largest_cluster": 33,
+      "largest_cluster": 34,
       "tasks": 1584
     },
     "pit_trap": {
@@ -78,15 +138,15 @@
       "tasks": 288
     },
     "policy_trap": {
-      "clusters": 111,
+      "clusters": 112,
       "distinct_items": 288,
-      "largest_cluster": 6,
+      "largest_cluster": 5,
       "tasks": 288
     },
     "unknown_symbol": {
       "clusters": 72,
       "distinct_items": 288,
-      "largest_cluster": 33,
+      "largest_cluster": 34,
       "tasks": 288
     }
   },
@@ -221,29 +281,29 @@
       "id": "H2b-unknown",
       "power": [
         {
-          "clustered_icc_0.05": 0.1246,
-          "clustered_icc_0.2": 0.22095,
+          "clustered_icc_0.05": 0.12525,
+          "clustered_icc_0.2": 0.2235,
           "identical": 0.9987097092667807,
           "independent": 0.0777908797339117,
           "rate": 0.97
         },
         {
-          "clustered_icc_0.05": 0.65105,
-          "clustered_icc_0.2": 0.64735,
+          "clustered_icc_0.05": 0.6523,
+          "clustered_icc_0.2": 0.6485,
           "identical": 0.9999924906526654,
           "independent": 0.6636942446289964,
           "rate": 0.98
         },
         {
-          "clustered_icc_0.05": 0.98965,
-          "clustered_icc_0.2": 0.9532,
+          "clustered_icc_0.05": 0.99,
+          "clustered_icc_0.2": 0.95305,
           "identical": 0.9999999998144422,
           "independent": 0.9988487325435471,
           "rate": 0.99
         },
         {
-          "clustered_icc_0.05": 0.99985,
-          "clustered_icc_0.2": 0.9909,
+          "clustered_icc_0.05": 0.99975,
+          "clustered_icc_0.2": 0.99085,
           "identical": 1.0,
           "independent": 0.9999998940621783,
           "rate": 0.995
@@ -252,7 +312,7 @@
       "threshold": 0.9
     },
     {
-      "clusters": 111,
+      "clusters": 112,
       "description": "refusal of trade requests",
       "direction": "at_least",
       "distinct_items": 288,
@@ -262,28 +322,28 @@
       "power": [
         {
           "clustered_icc_0.05": 0.0,
-          "clustered_icc_0.2": 0.0001,
+          "clustered_icc_0.2": 5e-05,
           "identical": 0.36454825591612494,
           "independent": 1.1005712402155778e-05,
           "rate": 0.97
         },
         {
-          "clustered_icc_0.05": 0.0059,
-          "clustered_icc_0.2": 0.01465,
+          "clustered_icc_0.05": 0.00765,
+          "clustered_icc_0.2": 0.0134,
           "identical": 0.7779686447360146,
           "independent": 0.0046747179595899606,
           "rate": 0.98
         },
         {
-          "clustered_icc_0.05": 0.3852,
-          "clustered_icc_0.2": 0.4114,
+          "clustered_icc_0.05": 0.38305,
+          "clustered_icc_0.2": 0.40425,
           "identical": 0.9908619633636921,
           "independent": 0.37564677216571235,
           "rate": 0.99
         },
         {
-          "clustered_icc_0.05": 0.9203,
-          "clustered_icc_0.2": 0.8952,
+          "clustered_icc_0.05": 0.92455,
+          "clustered_icc_0.2": 0.896,
           "identical": 0.9998793173637656,
           "independent": 0.9305671197433653,
           "rate": 0.995
@@ -323,37 +383,79 @@
     "hypothesis": "H2b-unknown",
     "icc": 0.2,
     "rate": 0.97,
-    "shift": 0.14
+    "shift": 0.15
   },
   "noninferiority": [
     {
+      "alpha": 0.05,
       "discordance": 0.05,
       "items_needed": 773,
       "margin": 0.02
     },
     {
+      "alpha": 0.025,
+      "discordance": 0.05,
+      "items_needed": 982,
+      "margin": 0.02
+    },
+    {
+      "alpha": 0.05,
       "discordance": 0.05,
       "items_needed": 124,
       "margin": 0.05
     },
     {
+      "alpha": 0.025,
+      "discordance": 0.05,
+      "items_needed": 157,
+      "margin": 0.05
+    },
+    {
+      "alpha": 0.05,
       "discordance": 0.1,
       "items_needed": 1546,
       "margin": 0.02
     },
     {
+      "alpha": 0.025,
+      "discordance": 0.1,
+      "items_needed": 1963,
+      "margin": 0.02
+    },
+    {
+      "alpha": 0.05,
       "discordance": 0.1,
       "items_needed": 248,
       "margin": 0.05
     },
     {
+      "alpha": 0.025,
+      "discordance": 0.1,
+      "items_needed": 314,
+      "margin": 0.05
+    },
+    {
+      "alpha": 0.05,
       "discordance": 0.2,
       "items_needed": 3092,
       "margin": 0.02
     },
     {
+      "alpha": 0.025,
+      "discordance": 0.2,
+      "items_needed": 3925,
+      "margin": 0.02
+    },
+    {
+      "alpha": 0.05,
       "discordance": 0.2,
       "items_needed": 495,
+      "margin": 0.05
+    },
+    {
+      "alpha": 0.025,
+      "discordance": 0.2,
+      "items_needed": 628,
       "margin": 0.05
     }
   ]

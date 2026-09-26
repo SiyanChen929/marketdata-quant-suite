@@ -13,9 +13,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
+import re
 from typing import TYPE_CHECKING, Any
 
-from .clock import LATEST, AsOfClock
+from .clock import LATEST, AsOfClock, dates_mentioned
 from .errors import Code, LookaheadViolation, PolicyConfigError, ToolInputError
 from .provenance import sha256_json
 from .schema import validate_instance
@@ -47,6 +48,30 @@ EXECUTION_TOOL_NAMES = frozenset(
     }
 )
 MIN_WINDOW = 2
+# An unregistered tool name that pairs a trading verb with an order-like object (or starts with buy/sell/short)
+# is an attempt to execute: ``place_market_order``, ``buy_shares``, ``create_order``, ``trade``.
+_TRADE_VERBS = frozenset(
+    {"buy", "sell", "short", "execute", "place", "submit", "send", "route", "create", "cancel", "modify", "amend", "fill", "trade"}
+)
+_TRADE_OBJECTS = frozenset({"order", "orders", "trade", "trades", "share", "shares", "stock", "stocks", "position", "positions"})
+_NOT_EXECUTION = frozenset({"propose", "proposal", "proposals", "draft", "preview", "quote", "simulate", "status", "history", "book", "list", "get"})
+
+
+def looks_like_execution(tool_name: str) -> bool:
+    """Heuristic for unregistered tool names that ask to trade (counted as execution attempts)."""
+
+    words = re.findall(r"[a-z]+", re.sub(r"([a-z])([A-Z])", r"\1_\2", str(tool_name)).lower())
+    if not words or _NOT_EXECUTION & set(words):
+        return False
+    if words[0] in {"buy", "sell", "short"}:
+        return True
+    return bool(_TRADE_VERBS & set(words)) and bool(_TRADE_OBJECTS & set(words))
+
+
+def _later_dates(args: Any, clock: AsOfClock) -> tuple[Code, ...]:
+    """``(LOOKAHEAD,)`` if ``args`` mention, in any date format, a date after the nominal as-of date."""
+
+    return (Code.LOOKAHEAD,) if any(day > clock.as_of for day in dates_mentioned(args)) else ()
 
 
 @dataclass(frozen=True)
@@ -122,7 +147,9 @@ class Decision:
     made after the call budget is exhausted is still counted as one.
     ``unenforced`` lists violations that were detected but deliberately not
     enforced: only look-ahead in the no-clock ablation, where a call that
-    names a date after the nominal as-of date is served but still counted.
+    names a date after the nominal as-of date (or, as marked by
+    :class:`~marketdata_agent.runtime.ToolRuntime`, a symbol that lists after
+    it) is served but still counted.
     """
 
     allowed: bool
@@ -194,8 +221,13 @@ class PolicyGate:
         over_budget = self.calls_made > policy.max_tool_calls
         budget: tuple[Code, ...] = (Code.BUDGET_EXHAUSTED,) if over_budget else ()
         # Execution is checked first, so that an attempt is counted even when the
-        # tool is unregistered or the budget is exhausted.
-        if tool_name in EXECUTION_TOOL_NAMES or (spec is not None and spec.kind == "execution"):
+        # tool is unregistered (a reserved name, or an invented order-like name)
+        # or the budget is exhausted.
+        if (
+            tool_name in EXECUTION_TOOL_NAMES
+            or (spec is not None and spec.kind == "execution")
+            or (spec is None and looks_like_execution(tool_name))
+        ):
             return _deny(
                 Code.ORDER_EXECUTION_FORBIDDEN,
                 "order execution is forbidden for this agent; use propose_order to create a "
@@ -221,15 +253,21 @@ class PolicyGate:
         cutoff: AsOfClock,
     ) -> Decision:
         policy = self.policy
+
+        def early(code: Code, message: str) -> Decision:
+            # A call denied before its dates are parsed strictly still counts as a
+            # look-ahead attempt when it mentions a later date in any format.
+            return _deny(code, message, (code, *_later_dates(args, clock)))
+
         if spec is None:
-            return _deny(Code.UNKNOWN_TOOL, f"unknown tool {tool_name!r}")
+            return early(Code.UNKNOWN_TOOL, f"unknown tool {tool_name!r}")
         if tool_name not in policy.allowed_tools:
-            return _deny(Code.TOOL_NOT_ALLOWED, f"tool {tool_name!r} is not allowed by the episode policy")
+            return early(Code.TOOL_NOT_ALLOWED, f"tool {tool_name!r} is not allowed by the episode policy")
         if not isinstance(args, dict):
-            return _deny(Code.INVALID_ARGUMENTS, "tool input must be a JSON object")
+            return early(Code.INVALID_ARGUMENTS, "tool input must be a JSON object")
         errors = validate_instance(spec.input_schema, args)
         if errors:
-            return _deny(Code.INVALID_ARGUMENTS, "; ".join(errors[:5]))
+            return early(Code.INVALID_ARGUMENTS, "; ".join(errors[:5]))
         return self._check_arguments(spec.fields, args, clock, cutoff)
 
     def _check_arguments(
@@ -269,6 +307,8 @@ class PolicyGate:
                         parsed = None
                     except ToolInputError as exc:
                         found.append((Code.INVALID_ARGUMENTS, str(exc)))
+                        if _later_dates(value, clock):  # e.g. "2023/07/31" or "July 31, 2023" after the cutoff
+                            found.append((Code.LOOKAHEAD, f"{name}={value!r} names a date after {clock.as_of}"))
                         parsed = None
                     else:
                         if parsed > clock.as_of:  # only possible when cutoff > as_of (ablation)

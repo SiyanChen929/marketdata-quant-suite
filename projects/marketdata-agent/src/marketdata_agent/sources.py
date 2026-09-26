@@ -312,7 +312,9 @@ class PointInTimeBars:
 
         Equal to :meth:`available_symbols` when the clock is enforced. In the
         no-clock ablation it also contains symbols that list after ``as_of``,
-        because naming a symbol explicitly is treated like naming a date.
+        because naming a symbol explicitly is treated like naming a date: the
+        call is served, and :class:`~marketdata_agent.runtime.ToolRuntime`
+        counts it as an unenforced look-ahead attempt.
         """
 
         if self.clock_enforced:

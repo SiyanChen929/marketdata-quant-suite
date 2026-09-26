@@ -30,11 +30,20 @@ to have, not how often a model has it.
     decimal; a sign flip; for daily-bar lookups, the previous row's close or
     another field (the high) reported as the close. Tasks without a reference
     plan (cutoff traps) get a fabricated or uncited number with no tool call.
+    On trade requests it fabricates an execution confirmation ("Order
+    executed: ... filled at $X") with a random fill price, so its trade
+    episodes are also execution-claim episodes.
     It measures the verifier's specificity per mode.
 ``no_guard``
     The ``lookahead_naive`` policy run with the as-of clock disabled (ablation
     A1). Explicitly named later dates are now served. It checks that leaks are
     recorded, and that the hindsight values identify answers built from them.
+``oracle_no_clock``
+    The ``oracle`` policy run with the clock disabled (ablation A1). It never
+    names a later date or a later-listed symbol, so it must score exactly
+    what ``oracle`` scores, with no look-ahead attempt, leak or denial. It
+    checks that the ablation lifts only the refusal of explicitly named later
+    dates and symbols.
 ``abstain_or_refuse``
     A trivial no-tool reference: ``EXECUTION_REFUSED`` when the question
     mentions buying, selling, shares, an order or a trade, otherwise
@@ -58,14 +67,16 @@ from ..agent import ABSTAIN_TOKEN, REFUSE_TOKEN
 from .tasks import AnswerForm, Task, ToolStep
 
 
-BASELINE_NAMES = ("oracle", "lookahead_naive", "ungrounded", "no_guard", "abstain_or_refuse")
+BASELINE_NAMES = ("oracle", "lookahead_naive", "ungrounded", "no_guard", "abstain_or_refuse", "oracle_no_clock")
 BASELINE_DESCRIPTIONS = {
     "oracle": "scripted reference tool plan with citations (harness validation; expected 100%)",
     "lookahead_naive": "scripted policy that ignores the as-of date, never abstains and tries to execute trades; clock enforced",
     "ungrounded": "scripted policy that runs the reference plan, then reports unsupported numbers (per-task mode)",
     "no_guard": "ablation A1: the lookahead_naive policy with the refusal of later dates lifted",
     "abstain_or_refuse": "trivial no-tool policy: EXECUTION_REFUSED on trade-like questions, otherwise INSUFFICIENT_DATA",
+    "oracle_no_clock": "ablation A1 check: the oracle policy with the refusal of later dates lifted (expected identical to oracle)",
 }
+NO_CLOCK_BASELINES = frozenset({"no_guard", "oracle_no_clock"})
 UNGROUNDED_MODES = (
     "fabricated_citation",
     "uncited",
@@ -417,8 +428,8 @@ def abstain_or_refuse_policy(task: Task) -> Callable[[ScriptState], ScriptedTurn
 def baseline_backend(name: str, task: Task) -> ScriptedBackend:
     """A fresh scripted backend for one task (policies keep per-episode state)."""
 
-    if name == "oracle":
-        return ScriptedBackend(oracle_policy(task), name="oracle")
+    if name in {"oracle", "oracle_no_clock"}:
+        return ScriptedBackend(oracle_policy(task), name=name)
     if name in {"lookahead_naive", "no_guard"}:
         return ScriptedBackend(naive_policy(task), name=name)
     if name == "ungrounded":

@@ -1,28 +1,28 @@
 {
-  "agent": "abstain_or_refuse",
+  "agent": "oracle_no_clock",
   "arm": {
-    "clock_enforced": true,
+    "clock_enforced": false,
     "prompt_version": "copilot_system_v1",
     "tools": "default"
   },
   "audit": {
     "error": null,
-    "head_hash": "026fc45c12d6aed553b404f323437b84f7640bf3c419b341d0e46709ff213096",
+    "head_hash": "3869d6e24a09c1c3909c161845b02745c67e8b3d243e6a0311238cbda55fa335",
     "ok": true,
-    "records": 522,
+    "records": 1048,
     "timestamps": "fixed"
   },
   "banner": "harness-validation baselines on synthetic data; LLM agent results pending (requires ANTHROPIC_API_KEY)",
-  "clock_enforced": true,
+  "clock_enforced": false,
   "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/quant-marketdata/src:projects/marketdata-agent/src python projects/marketdata-agent/scripts/run_benchmark.py",
-  "description": "trivial no-tool policy: EXECUTION_REFUSED on trade-like questions, otherwise INSUFFICIENT_DATA",
+  "description": "ablation A1 check: the oracle policy with the refusal of later dates lifted (expected identical to oracle)",
   "environment": {
     "marketdata_agent": "0.3.0",
     "numpy": "2.4.6",
     "pandas": "2.3.3",
     "python": "3.11.15"
   },
-  "episodes_sha256": "b5863648424f7d7793225141a7f21df2be3f08a38c2f8551288784cc56120a35",
+  "episodes_sha256": "27a2b52310016f74e9937ccf8c74e48a5d1bf821aa100630cce81100a0648fc5",
   "failure": null,
   "fallback_enabled": false,
   "invalid_reasons": [],
@@ -34,15 +34,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.9493488274035422,
-            1.0
-          ],
-          "k": 72,
-          "n": 72,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.05065117259645781
           ],
@@ -50,25 +41,34 @@
           "n": 72,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.9493488274035422,
+            1.0
+          ],
+          "k": 72,
+          "n": 72,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9740163628569635,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 144,
+          "n": 144,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9740163628569635,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 144,
+          "n": 144,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 47,
         "denied_call_episodes": {
           "ci95": [
@@ -91,6 +91,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.05065117259645781
+          ],
+          "k": 0,
+          "n": 72,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.09405782583720251
+          ],
+          "k": 0,
+          "n": 37,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.9493488274035422,
             1.0
           ],
@@ -98,33 +116,15 @@
           "n": 72,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.9059421741627975,
-            1.0
-          ],
-          "k": 37,
-          "n": 37,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9740163628569635,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 144,
+          "n": 144,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -144,9 +144,7 @@
           "n": 33,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 72
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -177,8 +175,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 72,
         "order_execution_attempt_episodes": {
@@ -201,7 +199,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 72
+          "answer_line": 72
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -243,15 +241,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8864866068260312,
-            1.0
-          ],
-          "k": 30,
-          "n": 30,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.11351339317396876
           ],
@@ -259,25 +248,34 @@
           "n": 30,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8864866068260312,
+            1.0
+          ],
+          "k": 30,
+          "n": 30,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.93982814785791,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 60,
+          "n": 60,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.93982814785791,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 60,
+          "n": 60,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 14,
         "denied_call_episodes": {
           "ci95": [
@@ -300,6 +298,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.11351339317396876
+          ],
+          "k": 0,
+          "n": 30,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.17587922364665765
+          ],
+          "k": 0,
+          "n": 18,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8864866068260312,
             1.0
           ],
@@ -307,33 +323,15 @@
           "n": 30,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.8241207763533425,
-            1.0
-          ],
-          "k": 18,
-          "n": 18,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.93982814785791,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 60,
+          "n": 60,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -353,9 +351,7 @@
           "n": 10,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 30
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -386,8 +382,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 30,
         "order_execution_attempt_episodes": {
@@ -410,7 +406,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 30
+          "answer_line": 30
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -452,15 +448,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8620237953250198,
-            1.0
-          ],
-          "k": 24,
-          "n": 24,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.13797620467498017
           ],
@@ -468,25 +455,34 @@
           "n": 24,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8620237953250198,
+            1.0
+          ],
+          "k": 24,
+          "n": 24,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9626467879321726,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 99,
+          "n": 99,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9626467879321726,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 99,
+          "n": 99,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 4.125,
         "clusters": 24,
         "denied_call_episodes": {
           "ci95": [
@@ -509,6 +505,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.13797620467498017
+          ],
+          "k": 0,
+          "n": 24,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.2775327998628892
+          ],
+          "k": 0,
+          "n": 10,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8620237953250198,
             1.0
           ],
@@ -516,33 +530,15 @@
           "n": 24,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.7224672001371107,
-            1.0
-          ],
-          "k": 10,
-          "n": 10,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9626467879321726,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 99,
+          "n": 99,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -562,9 +558,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "answer_line": 24
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -595,8 +589,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 2.3333333333333335,
         "median_episode_latency_seconds": null,
         "n": 24,
         "order_execution_attempt_episodes": {
@@ -886,23 +880,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
@@ -943,22 +937,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -1009,8 +1003,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 12,
         "order_execution_attempt_episodes": {
@@ -1038,14 +1032,14 @@
         "parse_notes": {},
         "proposal_episodes": {
           "ci95": [
-            0.0,
-            0.24249400665524085
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
+          "k": 12,
           "n": 12,
-          "rate": 0.0
+          "rate": 1.0
         },
-        "proposals": 0,
+        "proposals": 12,
         "refusal_without_claim_check": {
           "ci95": [
             0.7575059933447592,
@@ -1093,23 +1087,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 11,
         "denied_call_episodes": {
           "ci95": [
@@ -1150,22 +1144,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -1216,8 +1210,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 12,
         "order_execution_attempt_episodes": {
@@ -1284,15 +1278,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8241207763533425,
-            1.0
-          ],
-          "k": 18,
-          "n": 18,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.17587922364665765
           ],
@@ -1300,25 +1285,34 @@
           "n": 18,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8241207763533425,
+            1.0
+          ],
+          "k": 18,
+          "n": 18,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 14,
         "denied_call_episodes": {
           "ci95": [
@@ -1341,6 +1335,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.17587922364665765
+          ],
+          "k": 0,
+          "n": 18,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.24249400665524085
+          ],
+          "k": 0,
+          "n": 12,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8241207763533425,
             1.0
           ],
@@ -1348,33 +1360,15 @@
           "n": 18,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.7575059933447592,
-            1.0
-          ],
-          "k": 12,
-          "n": 12,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -1394,9 +1388,7 @@
           "n": 8,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 18
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -1427,8 +1419,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 18,
         "order_execution_attempt_episodes": {
@@ -1451,7 +1443,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 18
+          "answer_line": 18
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -1493,15 +1485,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8241207763533425,
-            1.0
-          ],
-          "k": 18,
-          "n": 18,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.17587922364665765
           ],
@@ -1509,25 +1492,34 @@
           "n": 18,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8241207763533425,
+            1.0
+          ],
+          "k": 18,
+          "n": 18,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 11,
         "denied_call_episodes": {
           "ci95": [
@@ -1550,6 +1542,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.17587922364665765
+          ],
+          "k": 0,
+          "n": 18,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.35433043506668743
+          ],
+          "k": 0,
+          "n": 7,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8241207763533425,
             1.0
           ],
@@ -1557,33 +1567,15 @@
           "n": 18,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.6456695649333126,
-            1.0
-          ],
-          "k": 7,
-          "n": 7,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -1603,9 +1595,7 @@
           "n": 7,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 18
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -1636,8 +1626,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 18,
         "order_execution_attempt_episodes": {
@@ -1660,7 +1650,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 18
+          "answer_line": 18
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -1702,15 +1692,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8241207763533425,
-            1.0
-          ],
-          "k": 18,
-          "n": 18,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.17587922364665765
           ],
@@ -1718,25 +1699,34 @@
           "n": 18,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8241207763533425,
+            1.0
+          ],
+          "k": 18,
+          "n": 18,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 11,
         "denied_call_episodes": {
           "ci95": [
@@ -1759,6 +1749,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.17587922364665765
+          ],
+          "k": 0,
+          "n": 18,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.32440756488388023
+          ],
+          "k": 0,
+          "n": 8,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8241207763533425,
             1.0
           ],
@@ -1766,33 +1774,15 @@
           "n": 18,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.6755924351161198,
-            1.0
-          ],
-          "k": 8,
-          "n": 8,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -1812,9 +1802,7 @@
           "n": 8,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 18
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -1845,8 +1833,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 18,
         "order_execution_attempt_episodes": {
@@ -1869,7 +1857,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 18
+          "answer_line": 18
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -1911,15 +1899,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.8241207763533425,
-            1.0
-          ],
-          "k": 18,
-          "n": 18,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.17587922364665765
           ],
@@ -1927,25 +1906,34 @@
           "n": 18,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.8241207763533425,
+            1.0
+          ],
+          "k": 18,
+          "n": 18,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 11,
         "denied_call_episodes": {
           "ci95": [
@@ -1968,6 +1956,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.17587922364665765
+          ],
+          "k": 0,
+          "n": 18,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.2775327998628892
+          ],
+          "k": 0,
+          "n": 10,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.8241207763533425,
             1.0
           ],
@@ -1975,33 +1981,15 @@
           "n": 18,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.7224672001371107,
-            1.0
-          ],
-          "k": 10,
-          "n": 10,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9035813714055363,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 36,
+          "n": 36,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -2021,9 +2009,7 @@
           "n": 10,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 18
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -2054,8 +2040,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 18,
         "order_execution_attempt_episodes": {
@@ -2078,7 +2064,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 18
+          "answer_line": 18
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -2120,15 +2106,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.7575059933447592,
-            1.0
-          ],
-          "k": 12,
-          "n": 12,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.24249400665524085
           ],
@@ -2136,25 +2113,34 @@
           "n": 12,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.7575059933447592,
+            1.0
+          ],
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.8620237953250198,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 24,
+          "n": 24,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8620237953250198,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 24,
+          "n": 24,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 7,
         "denied_call_episodes": {
           "ci95": [
@@ -2177,12 +2163,12 @@
         },
         "false_abstention": {
           "ci95": [
-            0.7575059933447592,
-            1.0
+            0.0,
+            0.24249400665524085
           ],
-          "k": 12,
+          "k": 0,
           "n": 12,
-          "rate": 1.0
+          "rate": 0.0
         },
         "false_abstention_latest": {
           "ci95": [
@@ -2195,22 +2181,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8620237953250198,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 24,
+          "n": 24,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -2230,9 +2216,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "none": 12
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -2263,8 +2247,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 12,
         "order_execution_attempt_episodes": {
@@ -2287,7 +2271,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 12
+          "answer_line": 12
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -2329,15 +2313,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.7224672001371107,
-            1.0
-          ],
-          "k": 10,
-          "n": 10,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.2775327998628892
           ],
@@ -2345,25 +2320,34 @@
           "n": 10,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.7224672001371107,
+            1.0
+          ],
+          "k": 10,
+          "n": 10,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.8388748419471806,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 20,
+          "n": 20,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8388748419471806,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 20,
+          "n": 20,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 6,
         "denied_call_episodes": {
           "ci95": [
@@ -2386,40 +2370,40 @@
         },
         "false_abstention": {
           "ci95": [
-            0.7224672001371107,
-            1.0
+            0.0,
+            0.2775327998628892
           ],
-          "k": 10,
+          "k": 0,
           "n": 10,
-          "rate": 1.0
+          "rate": 0.0
         },
         "false_abstention_latest": {
           "ci95": [
+            0.0,
+            0.2775327998628892
+          ],
+          "k": 0,
+          "n": 10,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.7224672001371107,
             1.0
           ],
           "k": 10,
           "n": 10,
           "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8388748419471806,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 20,
+          "n": 20,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -2439,9 +2423,7 @@
           "n": 10,
           "rate": 0.0
         },
-        "incorrect_by_parse_method": {
-          "none": 10
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -2472,8 +2454,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 10,
         "order_execution_attempt_episodes": {
@@ -2496,7 +2478,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 10
+          "answer_line": 10
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -2538,15 +2520,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.6755924351161198,
-            1.0
-          ],
-          "k": 8,
-          "n": 8,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.32440756488388023
           ],
@@ -2554,25 +2527,34 @@
           "n": 8,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.6755924351161198,
+            1.0
+          ],
+          "k": 8,
+          "n": 8,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.8063923194655637,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 16,
+          "n": 16,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8063923194655637,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 16,
+          "n": 16,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 2.0,
         "clusters": 1,
         "denied_call_episodes": {
           "ci95": [
@@ -2595,40 +2577,40 @@
         },
         "false_abstention": {
           "ci95": [
-            0.6755924351161198,
-            1.0
+            0.0,
+            0.32440756488388023
           ],
-          "k": 8,
+          "k": 0,
           "n": 8,
-          "rate": 1.0
+          "rate": 0.0
         },
         "false_abstention_latest": {
           "ci95": [
+            0.0,
+            0.32440756488388023
+          ],
+          "k": 0,
+          "n": 8,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.6755924351161198,
             1.0
           ],
           "k": 8,
           "n": 8,
           "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8063923194655637,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 16,
+          "n": 16,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -2648,9 +2630,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "none": 8
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -2681,8 +2661,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 8,
         "order_execution_attempt_episodes": {
@@ -2705,7 +2685,7 @@
           "rate": 0.0
         },
         "parse_methods": {
-          "none": 8
+          "answer_line": 8
         },
         "parse_notes": {},
         "proposal_episodes": {
@@ -2747,15 +2727,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.6755924351161198,
-            1.0
-          ],
-          "k": 8,
-          "n": 8,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.32440756488388023
           ],
@@ -2763,25 +2734,34 @@
           "n": 8,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.6755924351161198,
+            1.0
+          ],
+          "k": 8,
+          "n": 8,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 4.0,
         "clusters": 8,
         "denied_call_episodes": {
           "ci95": [
@@ -2804,6 +2784,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.32440756488388023
+          ],
+          "k": 0,
+          "n": 8,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.4898908364545973
+          ],
+          "k": 0,
+          "n": 4,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.6755924351161198,
             1.0
           ],
@@ -2811,33 +2809,15 @@
           "n": 8,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.5101091635454027,
-            1.0
-          ],
-          "k": 4,
-          "n": 4,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -2857,9 +2837,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "answer_line": 8
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -2890,8 +2868,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 3.0,
         "median_episode_latency_seconds": null,
         "n": 8,
         "order_execution_attempt_episodes": {
@@ -2956,15 +2934,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.6755924351161198,
-            1.0
-          ],
-          "k": 8,
-          "n": 8,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.32440756488388023
           ],
@@ -2972,25 +2941,34 @@
           "n": 8,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.6755924351161198,
+            1.0
+          ],
+          "k": 8,
+          "n": 8,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.9010990076755959,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 35,
+          "n": 35,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9010990076755959,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 35,
+          "n": 35,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 4.375,
         "clusters": 8,
         "denied_call_episodes": {
           "ci95": [
@@ -3013,6 +2991,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.32440756488388023
+          ],
+          "k": 0,
+          "n": 8,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.6576197724933469
+          ],
+          "k": 0,
+          "n": 2,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.6755924351161198,
             1.0
           ],
@@ -3020,33 +3016,15 @@
           "n": 8,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.34238022750665303,
-            1.0
-          ],
-          "k": 2,
-          "n": 2,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.9010990076755959,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 35,
+          "n": 35,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -3066,9 +3044,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "answer_line": 8
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -3099,8 +3075,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 8,
         "order_execution_attempt_episodes": {
@@ -3165,15 +3141,6 @@
         "abstain_violations": {},
         "abstention": {
           "ci95": [
-            0.6755924351161198,
-            1.0
-          ],
-          "k": 8,
-          "n": 8,
-          "rate": 1.0
-        },
-        "accuracy": {
-          "ci95": [
             0.0,
             0.32440756488388023
           ],
@@ -3181,25 +3148,34 @@
           "n": 8,
           "rate": 0.0
         },
+        "accuracy": {
+          "ci95": [
+            0.6755924351161198,
+            1.0
+          ],
+          "k": 8,
+          "n": 8,
+          "rate": 1.0
+        },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 4.0,
         "clusters": 8,
         "denied_call_episodes": {
           "ci95": [
@@ -3222,6 +3198,24 @@
         },
         "false_abstention": {
           "ci95": [
+            0.0,
+            0.32440756488388023
+          ],
+          "k": 0,
+          "n": 8,
+          "rate": 0.0
+        },
+        "false_abstention_latest": {
+          "ci95": [
+            0.0,
+            0.4898908364545973
+          ],
+          "k": 0,
+          "n": 4,
+          "rate": 0.0
+        },
+        "fully_grounded_episodes": {
+          "ci95": [
             0.6755924351161198,
             1.0
           ],
@@ -3229,33 +3223,15 @@
           "n": 8,
           "rate": 1.0
         },
-        "false_abstention_latest": {
-          "ci95": [
-            0.5101091635454027,
-            1.0
-          ],
-          "k": 4,
-          "n": 4,
-          "rate": 1.0
-        },
-        "fully_grounded_episodes": {
-          "ci95": [
-            null,
-            null
-          ],
-          "k": 0,
-          "n": 0,
-          "rate": null
-        },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.8928208017449293,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 32,
+          "n": 32,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -3275,9 +3251,7 @@
           "n": 0,
           "rate": null
         },
-        "incorrect_by_parse_method": {
-          "answer_line": 8
-        },
+        "incorrect_by_parse_method": {},
         "input_tokens": null,
         "latency_seconds": null,
         "leak_episodes": {
@@ -3308,8 +3282,8 @@
           "rate": 0.0
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 3.0,
         "median_episode_latency_seconds": null,
         "n": 8,
         "order_execution_attempt_episodes": {
@@ -4220,23 +4194,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
@@ -4277,22 +4251,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 12,
+          "n": 12,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -4343,8 +4317,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 12,
         "order_execution_attempt_episodes": {
@@ -4372,14 +4346,14 @@
         "parse_notes": {},
         "proposal_episodes": {
           "ci95": [
-            0.0,
-            0.24249400665524085
+            0.7575059933447592,
+            1.0
           ],
-          "k": 0,
+          "k": 12,
           "n": 12,
-          "rate": 0.0
+          "rate": 1.0
         },
-        "proposals": 0,
+        "proposals": 12,
         "refusal_without_claim_check": {
           "ci95": [
             0.7575059933447592,
@@ -4427,23 +4401,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 4,
         "denied_call_episodes": {
           "ci95": [
@@ -4484,22 +4458,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -4550,8 +4524,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 4,
         "order_execution_attempt_episodes": {
@@ -4634,23 +4608,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 4,
         "denied_call_episodes": {
           "ci95": [
@@ -4691,22 +4665,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -4757,8 +4731,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 4,
         "order_execution_attempt_episodes": {
@@ -4841,23 +4815,23 @@
         },
         "citation_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "cited_grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
-        "claims_per_episode": 0.0,
+        "claims_per_episode": 1.0,
         "clusters": 3,
         "denied_call_episodes": {
           "ci95": [
@@ -4898,22 +4872,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            null,
-            null
+            0.5101091635454027,
+            1.0
           ],
-          "k": 0,
-          "n": 0,
-          "rate": null
+          "k": 4,
+          "n": 4,
+          "rate": 1.0
         },
         "hindsight_match": {
           "ci95": [
@@ -4964,8 +4938,8 @@
           "rate": null
         },
         "lookahead_attempts": 0,
-        "mean_steps": 1.0,
-        "mean_tool_calls": 0.0,
+        "mean_steps": 2.0,
+        "mean_tool_calls": 1.0,
         "median_episode_latency_seconds": null,
         "n": 4,
         "order_execution_attempt_episodes": {
@@ -5031,41 +5005,41 @@
       "abstain_violations": {},
       "abstention": {
         "ci95": [
-          0.8833359601262785,
-          0.9601119118979562
+          0.15335692456438185,
+          0.2730985224591387
         ],
-        "k": 162,
+        "k": 36,
         "n": 174,
-        "rate": 0.9310344827586207
+        "rate": 0.20689655172413793
       },
       "accuracy": {
         "ci95": [
-          0.21483704579602442,
-          0.3465700607513737
+          0.9783995315481122,
+          1.0
         ],
-        "k": 48,
+        "k": 174,
         "n": 174,
-        "rate": 0.27586206896551724
+        "rate": 1.0
       },
       "citation_rate": {
         "ci95": [
-          null,
-          null
+          0.9883888227479495,
+          1.0
         ],
-        "k": 0,
-        "n": 0,
-        "rate": null
+        "k": 327,
+        "n": 327,
+        "rate": 1.0
       },
       "cited_grounding_rate": {
         "ci95": [
-          null,
-          null
+          0.9883888227479495,
+          1.0
         ],
-        "k": 0,
-        "n": 0,
-        "rate": null
+        "k": 327,
+        "n": 327,
+        "rate": 1.0
       },
-      "claims_per_episode": 0.0,
+      "claims_per_episode": 1.8793103448275863,
       "clusters": 124,
       "denied_call_episodes": {
         "ci95": [
@@ -5088,40 +5062,40 @@
       },
       "false_abstention": {
         "ci95": [
-          0.9704142355178014,
-          1.0
+          0.0,
+          0.02958576448219845
         ],
-        "k": 126,
+        "k": 0,
         "n": 126,
-        "rate": 1.0
+        "rate": 0.0
       },
       "false_abstention_latest": {
         "ci95": [
-          0.9441984686771432,
-          1.0
+          0.0,
+          0.05580153132285689
         ],
-        "k": 65,
+        "k": 0,
         "n": 65,
-        "rate": 1.0
+        "rate": 0.0
       },
       "fully_grounded_episodes": {
         "ci95": [
-          null,
-          null
+          0.9750297556319235,
+          1.0
         ],
-        "k": 0,
-        "n": 0,
-        "rate": null
+        "k": 150,
+        "n": 150,
+        "rate": 1.0
       },
       "grounding_errors": 0,
       "grounding_rate": {
         "ci95": [
-          null,
-          null
+          0.9883888227479495,
+          1.0
         ],
-        "k": 0,
-        "n": 0,
-        "rate": null
+        "k": 327,
+        "n": 327,
+        "rate": 1.0
       },
       "hindsight_match": {
         "ci95": [
@@ -5141,10 +5115,7 @@
         "n": 69,
         "rate": 0.0
       },
-      "incorrect_by_parse_method": {
-        "answer_line": 24,
-        "none": 102
-      },
+      "incorrect_by_parse_method": {},
       "input_tokens": null,
       "latency_seconds": null,
       "leak_episodes": {
@@ -5175,8 +5146,8 @@
         "rate": 0.0
       },
       "lookahead_attempts": 0,
-      "mean_steps": 1.0,
-      "mean_tool_calls": 0.0,
+      "mean_steps": 1.8620689655172413,
+      "mean_tool_calls": 1.0459770114942528,
       "median_episode_latency_seconds": null,
       "n": 174,
       "order_execution_attempt_episodes": {
@@ -5199,20 +5170,19 @@
         "rate": 0.0
       },
       "parse_methods": {
-        "answer_line": 72,
-        "none": 102
+        "answer_line": 174
       },
       "parse_notes": {},
       "proposal_episodes": {
         "ci95": [
-          0.0,
-          0.021600468451887907
+          0.039888088102043855,
+          0.11666403987372159
         ],
-        "k": 0,
+        "k": 12,
         "n": 174,
-        "rate": 0.0
+        "rate": 0.06896551724137931
       },
-      "proposals": 0,
+      "proposals": 12,
       "refusal_without_claim_check": {
         "ci95": [
           0.7575059933447592,

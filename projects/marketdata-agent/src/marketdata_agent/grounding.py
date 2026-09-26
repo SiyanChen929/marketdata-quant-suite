@@ -28,9 +28,12 @@ Pipeline
      (``20-day``, ``63 trading days``, ``252 sessions``, ``3 months``,
      ``60 returns``) or preceded by ``window``/``lookback``/``horizon``;
    * a parameter written like a function argument: ``vol(20)``, ``MA(50)``;
-   * an identifier: an integer attached to letters, underscores, ``/`` or
-     ``:``, or attached through a hyphen or plus sign to a letter
-     (``SYN01``, ``1st``, ``Q2``, ``t+1``, ``p-3f2a``);
+   * an identifier: an integer attached to letters, underscores or ``/``,
+     attached through a hyphen or plus sign to a letter (``SYN01``, ``1st``,
+     ``Q2``, ``t+1``, ``p-3f2a``), or a bare integer written right after a
+     colon that follows a one- or two-letter token or a token with a digit
+     (``p:3``, ``SYN01:2``). A number after any other colon is a claim
+     (``ANSWER:4.21%``, ``return:4.21%``, ``{"simple_return":0.0421}``);
    * an ordinal or list marker: ``rank 1``, ``#2``, ``No. 3``, or ``1.`` at
      the start of a line;
    * a convention constant: ``sqrt(252)``, ``√252``;
@@ -73,18 +76,30 @@ Pipeline
    ``last_close`` are also bound to their end of the range: when the sentence
    (or else the question) speaks only of the latest ("most recent", "last",
    ...) or only of the earliest ("first", "initial", ...) session, the other
-   end is out of scope. A number that matches only an out-of-scope output is
-   unsupported with the note ``date_mismatch``, ``field_mismatch`` or
-   ``position_mismatch``.
+   end is out of scope. Outputs that are the close of one session (the
+   ``first_close``/``last_close`` of a daily-bar range, the ``start_close``/
+   ``end_close`` of a return, the ``peak_close``/``trough_close`` of a
+   drawdown) carry that session's date, read from the result payload. When the
+   sentence or the question names a date, such an output is in scope only if
+   its session date is named, or the requested bound on its side of the range
+   is named (``start`` for the first session, ``end`` for the last), or the
+   named dates fix only the other bound and the text speaks of this end in
+   words ("the most recent confirmed session"). A peak or trough needs its own
+   date, both bounds of its range, or one bound plus a position word. A close
+   from another session is therefore not accepted for a question about a named
+   date. A number that matches only an out-of-scope output is unsupported with
+   the note ``date_mismatch``, ``field_mismatch`` or ``position_mismatch``.
+   An ISO date binds only that date; a month and day without a year
+   (``June 29``) bind that day in any year.
 
 Known limits (see ``tests/test_grounding.py``): numbers written in words are
 not extracted. A derived number that no tool reported (for example a difference
 of two returns, in percentage points) is unsupported by construction. A
 four-digit quantity from 1900 to 2100 ("2000 shares") is treated as a year.
-Binding covers bar fields, dates and range ends of daily-bar results only: a
-claim may still match an output of the right type for the wrong symbol or
-statistic (a volatility reported under another symbol's name, or a simple
-return that happens to round to the log return of the same result). Coarsely
+Binding covers bar fields, dates and single-session closes only: a claim may
+still match an output of the right type for the wrong symbol or statistic (a
+volatility reported under another symbol's name, or a simple return that
+happens to round to the log return of the same result). Coarsely
 rounded claims (``5%``, a correlation of ``0.4``) and small counts can match
 an unrelated output by chance; ``scripts/verifier_stress.py`` measures how often.
 """
@@ -119,6 +134,15 @@ FIELD_OF_OUTPUT = {
 BAR_FIELDS = frozenset({"open", "high", "low", "close", "volume"})
 # Summary outputs that belong to one end of the requested range.
 POSITION_OF_OUTPUT = {"first_close": "first", "last_close": "last"}
+# Outputs that are the close of one session: base name -> (payload key of that session's date, side of the range).
+SESSION_OUTPUTS = {
+    "first_close": ("first_date", "first"),
+    "last_close": ("last_date", "last"),
+    "start_close": ("start_date", "first"),
+    "end_close": ("end_date", "last"),
+    "peak_close": ("peak_date", "inside"),
+    "trough_close": ("trough_date", "inside"),
+}
 
 _MINUS = r"\-" + "\u2212\u2013\u2012\ufe63\uff0d"  # hyphen escaped: a bare "-" inside [...] makes a range
 _CITATION = re.compile(r"\[r:([^\]]*)\]")
@@ -188,6 +212,9 @@ _FIELD_OF_WORD = {
 _LAST_WORD = re.compile(r"\b(?:most\s+recent|latest|last|current|final|ending)\b", re.IGNORECASE)
 _FIRST_WORD = re.compile(r"\b(?:first|earliest|initial|starting|beginning)\b", re.IGNORECASE)
 _ROW_OUTPUT = re.compile(r"^(?P<field>open|high|low|close|volume)\[(?P<date>\d{4}-\d{2}-\d{2})\]$")
+_ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# A colon glues a bare integer into an identifier only after an id-like token: one or two letters, or a token with a digit.
+_ID_BEFORE_COLON = re.compile(r"(?:(?<![A-Za-z0-9_])[A-Za-z]{1,2}|[A-Za-z0-9_]*\d[A-Za-z0-9_]*):$")
 _FLOAT_NOISE = 1e-9
 
 
@@ -516,7 +543,9 @@ def _scan(text: str, question: str | None) -> _Scan:
                 ignored.append(IgnoredNumber(match.group(0), "identifier", match.start()))
                 continue
         literal = text[start:end].strip()
-        if before and (before.isalnum() or before in "_/:."):
+        bare_integer = not sign and not match.group("cur") and not unit_raw and not mult_raw and "." not in body
+        colon_glue = before == ":" and bare_integer and bool(_ID_BEFORE_COLON.search(masked[max(0, start - 24) : start]))
+        if before and (before.isalnum() or before in "_/." or colon_glue):
             ignored.append(IgnoredNumber(literal, "identifier", start))
             continue
         digits = body.replace(",", "").replace(".", "")
@@ -675,21 +704,84 @@ def _flipped(claim: NumericClaim, value: float, name: str) -> bool:
 
 
 @dataclass(frozen=True)
+class _Session:
+    """The session a single-session output belongs to, and the requested range it came from."""
+
+    day: str
+    side: str  # "first", "last" or "inside"
+    start: str | None
+    end: str | None
+
+
+def _iso_text(value: Any) -> str | None:
+    return value if isinstance(value, str) and _ISO_DAY.match(value) else None
+
+
+def _sessions_of(result: Any) -> dict[str, _Session]:
+    """Session dates of the single-session outputs of a tool result (empty for plain ``{name: value}`` maps)."""
+
+    payload = getattr(result, "payload", None)
+    provenance = getattr(result, "provenance", None)
+    if not isinstance(payload, Mapping) or provenance is None:
+        return {}
+    args = getattr(provenance, "args", None) or {}
+    start, end = _iso_text(args.get("start")), _iso_text(args.get("end"))
+    found: dict[str, _Session] = {}
+    for name in provenance.outputs:
+        base = _base(name)
+        if base not in SESSION_OUTPUTS:
+            continue
+        key, side = SESSION_OUTPUTS[base]
+        source: Any = payload
+        if name != base:  # a per-symbol output such as end_close[SYN01] (compare_returns)
+            symbol = name[len(base) + 1 : -1]
+            source = next(
+                (e for e in payload.get("ranking") or () if isinstance(e, Mapping) and e.get("symbol") == symbol), {}
+            )
+        day = _iso_text(source.get(key)) if isinstance(source, Mapping) else None
+        if day is not None:
+            found[name] = _Session(day, side, start, end)
+    return found
+
+
+@dataclass(frozen=True)
 class _Scope:
     dates: frozenset[str]
     month_days: frozenset[str]
     fields: frozenset[str]
     positions: frozenset[str] = frozenset()
 
-    def admits(self, name: str) -> str | None:
+    def _names(self, day: str | None) -> bool:
+        return day is not None and (day in self.dates or day[5:] in self.month_days)
+
+    def _only(self, allowed: Iterable[str | None]) -> bool:
+        """Do the named dates name nothing but ``allowed`` dates?"""
+
+        days = {day for day in allowed if day}
+        return self.dates <= days and self.month_days <= {day[5:] for day in days}
+
+    def _session_in_scope(self, session: _Session) -> bool:
+        if not self.dates and not self.month_days:
+            return True
+        if self._names(session.day):
+            return True
+        if session.side == "first":
+            return self._names(session.start) or ("first" in self.positions and self._only([session.end]))
+        if session.side == "last":
+            return self._names(session.end) or ("last" in self.positions and self._only([session.start]))
+        both_bounds = self._names(session.start) and self._names(session.end)
+        return both_bounds or (bool(self.positions) and self._only([session.start, session.end]))
+
+    def admits(self, name: str, session: _Session | None = None) -> str | None:
         """``None`` if the output may support a claim in this scope, else the reason it may not."""
 
         row = _ROW_OUTPUT.match(name)
         field = row.group("field") if row else FIELD_OF_OUTPUT.get(_base(name))
         if row is not None:
-            day = row.group("date")
-            if day not in self.dates and day[5:] not in self.month_days:
+            if not self._names(row.group("date")):
                 return "date_mismatch"
+        if session is not None and not self._session_in_scope(session):
+            return "date_mismatch"
         if field is not None and self.fields and field not in self.fields:
             return "field_mismatch"
         position = POSITION_OF_OUTPUT.get(_base(name))
@@ -719,11 +811,12 @@ def _match(
 ) -> tuple[tuple[str, str] | None, str | None]:
     note: str | None = None
     for rid in ids:
+        sessions = _sessions_of(results[rid])
         for name, value in _outputs_of(results[rid]).items():
             if value is None:
                 continue
             if claim_matches(claim, value, name):
-                reason = scope.admits(name)
+                reason = scope.admits(name, sessions.get(name))
                 if reason is None:
                     return (rid, name), None
                 note = note or reason
@@ -780,7 +873,7 @@ def verify_grounding(
         positions = sentence_positions[claim.sentence] if inside else frozenset()
         scope = _Scope(
             frozenset(m.iso for m in marks if m.iso),
-            frozenset(m.month_day for m in marks if m.month_day),
+            frozenset(m.month_day for m in marks if m.month_day and not m.iso),
             fields or question_fields,
             positions or question_positions,
         )

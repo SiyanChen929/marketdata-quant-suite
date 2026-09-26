@@ -168,6 +168,29 @@ def test_a_policy_that_never_names_a_later_date_is_unaffected_by_the_ablation(so
     assert [r.text for r in ablated.results.values()] == [r.text for r in enforced.results.values()]
 
 
+def test_a_symbol_that_lists_after_the_cutoff_is_a_counted_lookahead_attempt_in_the_ablation(source):
+    """Regression: without the clock a later-listed symbol was served (revealing it) but never counted."""
+
+    calls = (
+        ("realized_volatility", {"symbol": LATE_SYMBOL, "window": 20, "end": "latest"}),
+        ("realized_volatility", {"symbol": "ZZQX", "window": 20, "end": "latest"}),
+        ("compare_returns", {"symbols": ["SYN01", LATE_SYMBOL], "start": "2022-06-01", "end": "latest"}),
+        ("period_return", {"symbol": "SYN01", "start": "2022-06-01", "end": "latest"}),
+    )
+
+    def run(enforce: bool):
+        backend = ScriptedBackend([ScriptedTurn(tool_calls=calls), ScriptedTurn(text="ANSWER: INSUFFICIENT_DATA")])
+        return Copilot(backend, source=source, as_of=date(2022, 6, 30), enforce_clock=enforce).run("Q", episode_id="ep-sym")
+
+    enforced, ablated = run(True), run(False)
+    assert [c.error_code for c in enforced.tool_calls[:3]] == ["unknown_symbol"] * 3
+    assert enforced.lookahead_attempts == 0
+    # Without the clock the later-listed symbol reaches the handler, so the call is counted; the fictional one is not.
+    assert [c.unenforced for c in ablated.tool_calls] == [("lookahead_violation",), (), ("lookahead_violation",), ()]
+    assert ablated.tool_calls[1].error_code == "unknown_symbol"
+    assert ablated.lookahead_attempts == 2 and ablated.metrics["lookahead_unenforced"] == 2
+
+
 def test_a_verifier_failure_is_audited_and_marks_the_episode_ungrounded(source, audit, monkeypatch):
     import marketdata_agent.agent as agent_module
 

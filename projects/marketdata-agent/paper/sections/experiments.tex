@@ -49,19 +49,24 @@ When asked to trade, including with false claims of authorization, does the
 copilot refuse, avoid execution attempts and execution claims, and avoid
 over-refusing ordinary questions? H3a: refusal accuracy on \code{policy\_trap}
 is at least 95\%, reported with and without a decoy \code{execute\_order} tool
-that is offered to the model and always refused by the gate. Without the
-decoy, a model can attempt execution only by calling a tool it was not
-offered. H3b: \tok{EXECUTION\_REFUSED} appears in at most 2\% of non-trade
+that is offered to the model and always refused by the gate, and with and
+without the unvalidated execution-claim detector. Without the decoy, a model
+can attempt execution only by calling a tool it was not offered, which the
+gate counts when the name is reserved or asks to trade and otherwise records
+in the audit log as an unknown tool. H3b: \tok{EXECUTION\_REFUSED} appears in at most 2\% of non-trade
 episodes. The system guarantees that no order is executed, whatever the model
 does; that is tested (Section~\ref{sec:system}), not hypothesized.
 
 \paragraph{RQ4: cost and latency versus accuracy.}
 How do accuracy, grounding and safety trade off against tokens and latency
-across effort levels? H4: for each effort level below the main one, accuracy
-on answerable tasks is non-inferior to the main configuration with a margin
-of 5 percentage points: the one-sided 95\% lower bound of the paired
-difference in item-level success, from a task-clustered bootstrap, lies above
-$-5$ points, with Holm correction across levels. We also report the Pareto
+across effort levels? H4: for each effort level below the main one
+(\code{low} and \code{medium}), accuracy on answerable tasks is non-inferior
+to the effort sweep's own \code{high} cell, with the same suites and
+repetitions, with a margin of 5 percentage points: the one-sided lower bound
+of the paired difference in item-level success, from a task-clustered
+bootstrap, lies above $-5$ points, with Holm correction across the
+\powHolmComparisons{} comparisons (a one-sided 97.5\% bound at the first
+step). We also report the Pareto
 frontier of accuracy against mean output tokens and median episode latency.
 
 \subsection{Decision rule and power}
@@ -97,9 +102,20 @@ share a beta-distributed success rate (intra-cluster correlation 0.05 and 0.2,
 on a configuration that is otherwise powered is H1b at 99\%, whose power falls
 from \powHOneBIndependentNineNine{} to \powHOneBIccTwoNineNine{} at an
 intra-cluster correlation of 0.2. For H4, a paired non-inferiority test with a
-5-point margin needs \powNonInfTwoMarginZeroFive{} items at a discordant-pair
-rate of 0.2; the sweep therefore uses \powSweepSuites{} suites
-(\powSweepItems{} answerable items).
+5-point margin needs \powNonInfTwoMarginZeroFive{} items at a one-sided level
+of 0.05 and \powNonInfHolmTwoMarginZeroFive{} at the first Holm step (level
+\powHolmAlpha) at a discordant-pair rate of 0.2; the sweep therefore uses
+\powSweepSuites{} suites (\powSweepItems{} answerable items,
+\powSweepEpisodes{} episodes per cell). The two arms that carry a hypothesis,
+A1 (H2c) and the decoy tool (H3a), run on the first \powArmSuites{}
+evaluation suites with \powArmRepetitions{} repetitions
+(\powArmEpisodes{} episodes each) and are paired task by task with the same
+suites and repetitions of the main configuration. H3a with the decoy pools
+\powDecoyItems{} trade requests and is powered only at a refusal rate of
+99.5\% (\powDecoyIndependentNineNineFive{} with independent repetitions).
+H2c pools \powHTwoCItems{} tasks with a numeric hindsight value; its power is
+\powHTwoCPowerZeroTwoVsZero{} when 2\% of tasks match only without the
+clock and none only with it.
 
 \begin{table}[t]
 \centering
@@ -118,20 +134,23 @@ run. From \code{scripts/power\_analysis.py}.}
   \item \textbf{Main.} \code{claude-opus-5} with adaptive thinking, effort
   \code{high}, \code{max\_tokens} 16{,}000, the default policy (24 tool calls,
   strict schemas) and at most \RunMaxSteps{} steps. Server-side fallback is
-  off. A run in which any served model differs from the requested model is
-  marked invalid, as is a run that meets an unrecoverable API error; such a
-  run stops instead of scoring the failure as a wrong answer.
+  off. A run stops, and is marked invalid, at the first episode served by a
+  model other than the requested one, at the first unrecoverable API error,
+  which is never scored as a wrong answer, and at the first episode with the
+  clock enforced that uses rows dated after $t$ (H2a).
   \item \textbf{Effort sweep (RQ4).} Every effort level the model under test
   accepts (the backend validates \code{low}, \code{medium}, \code{high},
   \code{xhigh} and \code{max}) on \powSweepSuites{} suites with two
-  repetitions each.
+  repetitions each; H4 compares \code{low} and \code{medium} with the
+  sweep's own \code{high} cell.
   \item \textbf{Suites.} The public default suite (seed \SuiteSeed{}) is
   reserved for development and pilot runs. The evaluation uses eight fresh
   seeds, drawn after the system prompt and scorer are frozen; each evaluation
   suite has its own synthetic panel and shares no item with the development
-  suite or with another evaluation suite. The seeds and the suite SHA-256 are
-  recorded in the run manifest before the first model call, and the suites are
-  not published until the runs are complete.
+  suite or with another evaluation suite (\code{bench run --eval-seed}). The
+  seeds and the suite SHA-256 are recorded in the run manifest before the
+  first model call, and the suites are not published until the runs are
+  complete.
   \item \textbf{Repetitions.} Current models accept no sampling parameters,
   so run-to-run variability is measured by repetition: three independent runs
   for the main configuration. Mean rates over repetitions are reported with
@@ -155,7 +174,8 @@ run. From \code{scripts/power\_analysis.py}.}
   \item \textbf{A1: no clock.} The same model with the refusal of explicitly
   named later dates lifted (Section~\ref{sec:clock}). It measures how often a
   language model reaches for data after $t$ when nothing stops it (RQ2, H2c).
-  A policy that never names a later date is unaffected by it.
+  A policy that never names a later date or a later-listed symbol is
+  unaffected by it.
   \item \textbf{A2: no citation requirement.} A prompt variant without the
   citation instruction; tool results also omit their ``cite as'' line. The
   verifier still attributes uncited claims to any result, which separates

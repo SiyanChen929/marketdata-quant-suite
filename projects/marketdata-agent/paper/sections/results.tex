@@ -39,12 +39,18 @@ The \code{oracle} policy scores \resOracleAccK/\resOracleAccN, with
 \resOracleGroundedK/\resOracleGroundedN{} claims grounded and
 \resOracleCitedK/\resOracleCitedN{} cited, and its audit chain of
 \resOracleAuditRecords{} records is \resOracleAuditOk{} against the head
-recorded in the committed summary (\code{\resOracleAuditHead}). The reference
-implementation, the tools, the answer parser, the scorer and the verifier
-therefore agree on every task of the suite (Table~\ref{tab:baselines}). A
-regression test runs the same policy with the clock disabled and requires the
-same accuracy with no leak and no denied call, as a policy that never names a
-later date should (Section~\ref{sec:clock}).
+recorded in the committed summary (\code{\resOracleAuditHead}). On the
+\SuiteAnswerable{} answerable tasks the reference implementation, the tools
+and the answer parser therefore agree, and the verifier supports every claim
+of the \resOracleFullyGroundedN{} episodes that make numeric claims; the trap
+categories check the abstention and refusal scoring
+(Tables~\ref{tab:baselines} and~\ref{tab:categories}). The
+\code{oracle\_no\_clock} baseline runs the same policy with the clock
+disabled and reproduces it: \resOracleNoClockAccK/\resOracleNoClockAccN{}
+correct, with \resOracleNoClockLookaheadEpK{} look-ahead attempt,
+\resOracleNoClockLeakEpK{} leak and \resOracleNoClockDeniedEpK{}
+denied-call episodes, as a policy that never names a later date should
+(Section~\ref{sec:clock}).
 
 \paragraph{The clock refuses and counts every future read.}
 With the clock enforced, \code{lookahead\_naive} names a date after the
@@ -60,16 +66,22 @@ cutoff traps and \resLookaheadNaiveCatPolicyTrapAccK{} of
 \resLookaheadNaiveCatPolicyTrapAccN{} trade requests; its execution attempts
 (\resLookaheadNaiveExecEpK{} episodes) are all refused and counted, and its
 subsequent claims that the order was submitted are flagged
-(\resLookaheadNaiveExecClaimEpK{} episodes). Its answers remain fully grounded
-(\resLookaheadNaiveGroundedK/\resLookaheadNaiveGroundedN{} claims): the
-verifier checks faithfulness to tool outputs, not whether the right quantity
-was requested. Whether refusing reads makes a language model abstain is the
+(\resLookaheadNaiveExecClaimEpK{} episodes). The verifier supports
+\resLookaheadNaiveGroundedK{} of its \resLookaheadNaiveGroundedN{} claims. Its
+answers to the traps about returns and volatilities, computed for an earlier
+period, are fully grounded: the verifier checks faithfulness to tool outputs,
+not whether the right quantity was requested. The unsupported claims are its
+answers to the traps about the close on a later date, where it reports the
+last close before the cutoff, a close of another session that the verifier
+does not accept for the named date. Whether refusing reads makes a language model abstain is the
 empirical question of RQ2; the scorer measures abstention separately.
 
 \paragraph{The hindsight instrument identifies answers built from future data.}
 The \code{no\_guard} ablation runs the same policy with the refusal of later
-dates lifted. It names later dates in the same \resNoGuardLookaheadEpK{}
-episodes, which are now served: \resNoGuardLeakEpK{} of \resNoGuardLeakEpN{}
+dates lifted. It names the same later dates, and its look-ahead attempt
+episodes (\resNoGuardLookaheadEpK, against \resLookaheadNaiveLookaheadEpK{}
+with the clock) also include calls without a later date that name a symbol
+listing after the cutoff. The later dates are now served: \resNoGuardLeakEpK{} of \resNoGuardLeakEpN{}
 episodes use rows dated after the cutoff, and \resNoGuardHindsightNumericK{}
 of \resNoGuardHindsightNumericN{} answers that carry a numeric hindsight
 value match it. This holds by construction, since the hindsight value is
@@ -95,8 +107,15 @@ oracle's real results in \verEpisodes{} episodes (Table~\ref{tab:injections}).
 Values shown with two decimals are accepted \verRandomUncitedPercentTwoPct\%
 of the time as percentages and \verRandomUncitedUsdTwoPct\% as prices; coarse
 values are accepted more often (\verRandomUncitedPercentZeroPct\% for whole
-percentages, \verRandomUncitedCountZeroPct\% for small counts), which bounds
-how much chance matches can inflate a grounding rate.
+percentages, \verRandomUncitedCountZeroPct\% for small counts). These are
+chance rates for values drawn uniformly from the fixed ranges listed in
+\code{results/verifier/verifier\_stress.md}, not bounds on how often a
+model's errors are accepted: a model's wrong numbers cluster near true or
+related outputs. The rows closer to that error model are the near misses
+(\verNearMissPercentTwoK{} of \verNearMissPercentTwoN{} two-decimal
+percentages accepted) and the closes of another session reported as the close
+on a named date (\verRangeLastCloseUsdTwoK{} of \verRangeLastCloseUsdTwoN{}
+and \verRangeFirstCloseUsdTwoK{} of \verRangeFirstCloseUsdTwoN{} accepted).
 
 \begin{table}[t]
 \centering

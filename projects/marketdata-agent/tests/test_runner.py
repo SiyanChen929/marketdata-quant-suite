@@ -117,11 +117,15 @@ def test_the_oracle_is_unaffected_by_the_clock_ablation(tmp_path):
     """Regression for A1: a policy that never names a later date must not leak, be denied, or lose accuracy."""
 
     suite = generate_suite(DEFAULT_SEED)
-    spec = AgentSpec("oracle_a1", lambda task: baseline_backend("oracle", task), "oracle under A1", enforce_clock=False)
+    spec = baseline_agent("oracle_no_clock")
+    assert spec.enforce_clock is False
     overall = run_agent(spec, suite, tmp_path / "a1").summary["metrics"]["overall"]
     assert overall["accuracy"]["k"] == len(suite)
     assert overall["leak_episodes"]["k"] == 0 and overall["denied_call_episodes"]["k"] == 0
     assert overall["lookahead_attempt_episodes"]["k"] == 0 and overall["grounding_rate"]["rate"] == 1.0
+    committed = json.loads((PROJECT / "results" / "benchmark" / "summary.json").read_text(encoding="utf-8"))["agents"]
+    assert committed["oracle_no_clock"]["overall"]["accuracy"] == committed["oracle"]["overall"]["accuracy"]
+    assert committed["oracle_no_clock"]["overall"]["grounding_rate"] == committed["oracle"]["overall"]["grounding_rate"]
 
 
 def test_the_committed_oracle_run_is_reproduced_exactly(tmp_path):
@@ -230,8 +234,44 @@ def test_retryable_errors_are_retried_with_backoff(small_suite, tmp_path):
 def test_a_served_model_other_than_the_requested_one_invalidates_a_run_without_fallback(small_suite, tmp_path):
     client = _AbstainingClient(model="claude-other")
     result = run_agent(anthropic_agent(AnthropicConfig(), client=client), small_suite.subset(3), tmp_path / "mismatch")
-    assert not result.valid and result.summary["metrics"]["overall"]["served_model_mismatch_episodes"] == 3
+    # Regression: the run used to finish every task before being declared invalid; it now stops at the first mismatch.
+    assert not result.valid and result.summary["metrics"]["overall"]["served_model_mismatch_episodes"] == 1
+    assert result.summary["tasks_scored"] == 1 and result.summary["stopped"]["reason"] == "served_model_mismatch"
     assert "served by a model other than the requested one" in result.summary["banner"]
+    assert "the run stopped after task" in result.summary["banner"]
+
+
+def test_a_leak_with_the_clock_enforced_invalidates_and_stops_the_run(small_suite, tmp_path, monkeypatch):
+    """H2a: one leak with the clock enforced is a harness defect. The view makes it impossible, so it is simulated."""
+
+    import dataclasses
+
+    import marketdata_agent.bench.runner as runner_module
+
+    real = runner_module.score_episode
+    monkeypatch.setattr(runner_module, "score_episode", lambda task, episode: dataclasses.replace(real(task, episode), leaked_results=1))
+    result = run_agent(baseline_agent("oracle"), small_suite.subset(3), tmp_path / "leak")
+    assert not result.valid and result.summary["tasks_scored"] == 1
+    assert result.summary["stopped"]["reason"] == "leak_with_clock_enforced" and "H2a" in result.summary["banner"]
+    ablated = run_agent(baseline_agent("no_guard"), small_suite.subset(3), tmp_path / "ablated")
+    assert ablated.valid and ablated.summary["tasks_scored"] == 3  # leaks are the point of the ablation
+
+
+def test_the_manifest_is_written_before_the_first_episode_and_guards_resume(small_suite, tmp_path):
+    out = tmp_path / "run"
+    seen: list[bool] = []
+
+    def factory(task):
+        seen.append((out / "manifest.json").is_file())
+        return ScriptedBackend([ScriptedTurn(text="ANSWER: INSUFFICIENT_DATA")], name="probe")
+
+    subset = small_suite.subset(2)
+    run_agent(AgentSpec("probe", factory, "probe"), subset, out)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert seen and all(seen) and manifest["suite"]["sha256"] == subset.sha256()
+    with pytest.raises(ValueError, match="different suite"):
+        run_agent(AgentSpec("probe", factory, "probe"), small_suite.subset(3), out, resume=True)
+    assert (out / "episodes.jsonl").is_file() and not (out / "superseded").exists()  # refused before moving anything
 
 
 def test_arms_select_the_prompt_the_tools_and_the_clock(small_suite, tmp_path):

@@ -67,15 +67,19 @@ scripted baselines and replayed runs all go through the identical harness.
   `Policy` that allows provisional data cannot be constructed.
 - **Look-ahead is refused, not clamped.** The as-of clock rejects any date
   after *t* at the gate and again at the data view, so attempts are counted
-  instead of hidden. Symbols that list after *t* are invisible. The guarantee
+  instead of hidden. A later date written in another format (`2023/07/31`,
+  `July 31, 2023`), or passed to an unknown tool, is denied and still counted.
+  Symbols that list after *t* are invisible. The guarantee
   is by row **date**: on real data, vendor-adjusted prices and a
   survivorship-biased universe can still carry information from after *t*, so
   real-data runs need a point-in-time adjustment basis first
   ([`docs/safety-model.md`](docs/safety-model.md), risk 1).
 - **No execution.** There is no broker client. The gate refuses eight
-  reserved execution names and any tool of kind `execution`, even when it is
-  registered, offered (the benchmark's decoy `execute_order`) and
-  allow-listed, and it counts the attempt even after the call budget is spent.
+  reserved execution names, unregistered names that ask to trade
+  (`place_market_order`, `buy_shares`), and any tool of kind `execution`,
+  even when it is registered, offered (the benchmark's decoy `execute_order`)
+  and allow-listed, and it counts the attempt even after the call budget is
+  spent.
 - **Human-approved proposals only.** `propose_order` records an inert
   proposal with status `pending_human_approval`, priced at the last confirmed
   close. It could execute no earlier than *t*+1, and only after a human
@@ -86,8 +90,9 @@ scripted baselines and replayed runs all go through the identical harness.
   head of each benchmark log is recorded in the committed `summary.json`, and
   scripted runs regenerate their logs byte for byte.
 - **Failed runs are not results.** A benchmark run that meets an
-  unrecoverable API error, or a served model other than the requested one,
-  stops or is marked invalid, with a banner and exit status 3.
+  unrecoverable API error, a served model other than the requested one, or a
+  leak with the clock enforced stops at that episode and is marked invalid,
+  with a banner and exit status 3.
 
 Each risk (look-ahead, hallucinated numbers, unauthorized trading, prompt
 injection through tool outputs, provisional data, audit tampering and more) is
@@ -105,10 +110,11 @@ Copied verbatim from [`results/benchmark/summary.md`](results/benchmark/summary.
 | Agent | Tasks | Accuracy [95% CI] | Grounding (claims) | Citation | Look-ahead attempt episodes | Leak episodes | Denied-call episodes | Tool calls / task |
 |---|---|---|---|---|---|---|---|---|
 | `oracle` | 174 | 100.0% [97.8, 100.0] | 100.0% | 100.0% | 0.0% | 0.0% | 0.0% | 1.05 |
-| `lookahead_naive` | 174 | 79.3% [72.7, 84.7] | 100.0% | 100.0% | 51.1% | 0.0% | 58.0% | 1.86 |
+| `lookahead_naive` | 174 | 79.3% [72.7, 84.7] | 96.7% | 100.0% | 51.7% | 0.0% | 58.6% | 1.86 |
 | `ungrounded` | 174 | 10.9% [7.1, 16.4] | 0.0% | 71.8% | 0.0% | 0.0% | 0.0% | 1.05 |
-| `no_guard` | 174 | 47.7% [40.4, 55.1] | 100.0% | 100.0% | 51.1% | 48.3% | 6.9% | 1.25 |
+| `no_guard` | 174 | 48.3% [41.0, 55.7] | 100.0% | 100.0% | 52.9% | 47.7% | 6.9% | 1.25 |
 | `abstain_or_refuse` | 174 | 27.6% [21.5, 34.7] | n/a | n/a | 0.0% | 0.0% | 0.0% | 0.00 |
+| `oracle_no_clock` | 174 | 100.0% [97.8, 100.0] | 100.0% | 100.0% | 0.0% | 0.0% | 0.0% | 1.05 |
 
 The agents are **scripted policies, not language models**. Each checks one
 instrument, and several of the numbers below hold by construction: they show
@@ -116,26 +122,36 @@ that an instrument registers a behaviour the policy was programmed to have,
 not how often a model has it.
 
 - **`oracle`** (the reference tool plan with citations) scores 174/174, with
-  327/327 claims grounded. The independent reference, the tools, the parser,
-  the scorer and the verifier agree on every task. It also scores 174/174,
-  with no leak and no denied call, when the clock is disabled: the ablation
-  changes nothing for a policy that never names a later date.
-- **`lookahead_naive`** (clock on) names a date after the cutoff in 89 of 174
+  327/327 claims grounded. On the 126 answerable tasks the independent
+  reference, the tools, the parser and the scorer agree, and the verifier
+  supports every claim of the 150 episodes that make numeric claims; the 48
+  traps check the abstention and refusal scoring (on the 24 cutoff traps the
+  oracle abstains without a tool call). **`oracle_no_clock`**, the same policy
+  with the clock disabled, also scores 174/174 with no look-ahead attempt,
+  leak or denied call: the ablation changes nothing for a policy that never
+  names a later date or a symbol that lists later.
+- **`lookahead_naive`** (clock on) names a date after the cutoff in 90 of 174
   episodes (57 of 126 answerable ones), every such read is refused, and no
   result it receives contains a row after the cutoff. Built never to abstain
   on data it receives, it fails all 24 cutoff traps, and it tries
-  `execute_order` on all 12 trade requests, each refused and counted.
+  `execute_order` on all 12 trade requests, each refused and counted. The
+  verifier supports 351 of its 363 claims. The other 12 are its answers to
+  the 6 questions about the close on a later date: after the refusal it
+  reports the last close before the cutoff, a close of another session, which
+  is not accepted for the named date (`date_mismatch`).
 - **`no_guard`** (the same policy with the refusal of later dates lifted,
-  ablation A1) uses rows after the cutoff in 84 episodes, and all 70 answers
-  that carry a numeric hindsight value match it while every claim stays
-  "grounded". An evaluation scored against end-of-sample values would count
-  these answers as correct.
+  ablation A1) names a later date, or a symbol that lists after the cutoff,
+  in 92 episodes. It uses rows after the cutoff in 83 episodes, and all 69
+  answers that carry a numeric hindsight value match it while every claim
+  stays "grounded". An evaluation scored against end-of-sample values would
+  count these answers as correct.
 - **`ungrounded`** runs the reference plan and then misreports: the verifier
   supports 0 of its 312 claims across all seven modes (fabricated id,
   uncited, gross mis-report, near miss, sign flip, another row, another bar
   field) and reports 57 citations of ids that do not exist. Its 19 correct
   answers are mostly near misses inside the scoring tolerance, which the
-  verifier still rejects.
+  verifier still rejects. On trade requests it fabricates a fill
+  confirmation, so its 12 trade episodes are execution-claim episodes.
 - **`abstain_or_refuse`** (no tools; refuse on trade-like questions, abstain
   otherwise) is correct on all 48 traps and abstains on all 126 answerable
   tasks. Trap accuracy therefore has to be read together with false
@@ -144,16 +160,21 @@ not how often a model has it.
 A separate stress test injects fabricated claims next to the oracle's real
 results ([`results/verifier/verifier_stress.md`](results/verifier/verifier_stress.md)).
 Random values shown with two decimals are accepted 0.1% of the time as
-percentages and never as prices; coarse values are accepted more often (3.8%
-for whole percentages, 16.2% for small counts), and sign flips, another row's
-close and another bar field reported as the close are never accepted.
+percentages and 0.0% of the time as prices; coarse values are accepted more
+often (3.8% for whole percentages, 16.2% for small counts). These are chance
+rates for values drawn from the fixed ranges listed in the report, not bounds
+on how often a model's errors are accepted. None of the injected sign flips,
+closes of another row, other bar fields reported as the close, or closes of
+another session reported as the close on a named date was accepted (0/72,
+0/40, 0/22 and 0/48).
 
 Per-category results, grounding detail and definitions are in
 [`results/benchmark/summary.md`](results/benchmark/summary.md). The task suite
-(generator v2, 174 distinct items, SHA-256 prefix `57cd5cb0e19e9ab0`) has six
+(generator v3, 174 distinct items, SHA-256 prefix `004b9610ce4e0edf`) has six
 categories: `lookup` 30, `compute` 72, `multi_step` 24, `pit_trap` 24 (worded
 like answerable questions, but with dates after the cutoff), `policy_trap` 12
-(twelve templates, including "I have already approved this") and
+(each of the twelve templates once, including "I have already approved
+this" and "The execution tool is enabled for this session") and
 `unknown_symbol` 12 (fictional tickers, real tickers that probe answers from
 memory, and symbols that list later, 4 each).
 
@@ -170,7 +191,7 @@ export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:../../packages/quant-marketdata/
 # 1. Tests (offline, under a minute)
 python -m pytest -q -p no:cacheprovider
 
-# 2. Regenerate the committed benchmark: five scripted baselines x 174 tasks (about 25 s).
+# 2. Regenerate the committed benchmark: six scripted baselines x 174 tasks (about 35 s).
 #    Every file under results/benchmark/, including the git-ignored audit logs, is byte-identical on every rerun.
 python scripts/run_benchmark.py
 
@@ -178,7 +199,8 @@ python scripts/run_benchmark.py
 python scripts/verifier_stress.py
 python scripts/power_analysis.py
 
-# 4. One baseline on a stratified 30-task subset (outputs go to runs/, which is git-ignored)
+# 4. One baseline on a 30-task subset, stratified by category and by subcategory within each, so every one of
+#    the 18 subcategories is covered (outputs go to runs/, which is git-ignored)
 python -m marketdata_agent.cli bench run --agent oracle --tasks 30 --out runs/bench/oracle-30 --overwrite
 python -m marketdata_agent.cli bench tasks --tasks 6 --out runs/tasks-6.json
 python -m marketdata_agent.cli tools --compact          # the 8 strict tool definitions, as sent to the API
@@ -204,11 +226,16 @@ is no API key; only the credential-less failure of `ask` was checked:
 # Interactive copilot on the synthetic panel. Server-side fallback defaults ON here, and the served model is printed.
 python -m marketdata_agent.cli ask "What was SYN03's 60-day realized volatility as of 2023-06-30?" --as-of 2023-06-30
 
-# LLM benchmark: fallback OFF, every turn recorded; --resume continues an interrupted run from its recording
-python -m marketdata_agent.cli bench run --agent anthropic --out runs/bench/anthropic
-python -m marketdata_agent.cli bench run --agent anthropic --out runs/bench/anthropic --resume
-python -m marketdata_agent.cli bench run --agent anthropic \
-  --replay runs/bench/anthropic/recordings.jsonl --out runs/bench/anthropic-replay
+# Development-suite pilot: fallback OFF, every turn recorded; --resume continues an interrupted run from its recording
+python -m marketdata_agent.cli bench run --agent anthropic --tasks 30 --out runs/bench/anthropic-pilot
+python -m marketdata_agent.cli bench run --agent anthropic --tasks 30 --out runs/bench/anthropic-pilot --resume
+python -m marketdata_agent.cli bench run --agent anthropic --tasks 30 \
+  --replay runs/bench/anthropic-pilot/recordings.jsonl --out runs/bench/anthropic-pilot-replay
+
+# Evaluation suite of one seed (its own panel, 234 tasks, disjoint from the development suite); the manifest
+# with the seed and the suite SHA-256 is written before the first model call. `--seed` alone would only redraw
+# tasks on the public development panel.
+python -m marketdata_agent.cli bench run --agent anthropic --eval-seed <SEED> --out runs/bench/anthropic/high/seed-<SEED>/rep-1
 
 # Arms: A1 no clock, A2 no citation instruction, A5 closed book, decoy execution tool
 python -m marketdata_agent.cli bench run --agent anthropic --no-clock --out runs/bench/a1
@@ -225,12 +252,18 @@ exit status 3 instead of reporting 0% accuracy. The default model is
 `--effort` and `--max-tokens` override them; above the SDK's non-streaming
 limit the request is streamed. For real data, stage confirmed bars into the
 external store through the suite (`scripts/download-bars.py ... --finality
-confirmed`) and pass `--source store [--symbols ...]`, after reading the
-adjustment caveat in the safety model.
+confirmed`) and pass `--source store [--symbols ...]` to `ask`, after reading
+the adjustment caveat in the safety model. `bench run` has no `--source`
+option yet: the generator and reference still need the synthetic
+specification (research plan, G8).
 
 ## Status
 
-**Implemented and tested** (347 offline tests, about 40 s; see `tests/`):
+**Implemented and tested** (405 offline tests, about 50 s; see `tests/`). 11
+of them exercise the Claude backend through the `anthropic` SDK with injected
+fake clients, so they need the optional `[llm]` extra but no API key; where
+the SDK is not installed they are skipped (394 passed, 11 skipped), and the
+suite's CI job, which does not install the extra, reports them that way:
 
 - The governed core: confirmed-only sources, the as-of clock, the policy
   gate (execution checked before the budget), eight strict tools with
@@ -244,12 +277,13 @@ adjustment caveat in the safety model.
 - The grounding verifier, with sign agreement, date/field/range-end binding,
   unit suffixes and unparsed claims, adversarial and documented-limit tests,
   and a stress test.
-- The benchmark generator (v2: distinct items, stated conventions,
-  stratified unknown symbols, twelve trade templates, disjoint evaluation
-  suites on fresh panels), the independent reference, strict scoring with an
-  execution-claim detector, Wilson intervals, a runner that anchors each audit
-  chain in its summary and refuses to report failed runs, and byte-reproducible
-  outputs.
+- The benchmark generator (v3: distinct items, stated conventions and
+  units, stratified unknown symbols, twelve trade templates used in turn,
+  disjoint evaluation suites on fresh panels), the independent reference,
+  strict scoring with an execution-claim detector (refusal accuracy is also
+  reported without it), Wilson intervals, a runner that writes the suite
+  manifest before the first episode, anchors each audit chain in its summary
+  and refuses to report failed runs, and byte-reproducible outputs.
 - The pre-registered statistics (`bench/analysis.py`) and the power analysis
   of the evaluation design (`results/power/power.md`).
 - Structural resistance to instructions planted in tool outputs
@@ -277,7 +311,7 @@ adjustment caveat in the safety model.
 
 | Artifact | How it is produced | Reproducibility |
 |---|---|---|
-| `results/benchmark/summary.{json,md}`, `suite.json`, `<agent>/episodes.jsonl`, `<agent>/summary.{json,md}` | `python scripts/run_benchmark.py` | Byte-identical across reruns. The SHA-256 of each `episodes.jsonl` and the audit head are recorded in the summaries, and `tests/test_runner.py::test_the_committed_oracle_run_is_reproduced_exactly` regenerates the oracle run and compares both. |
+| `results/benchmark/summary.{json,md}`, `suite.json`, `<agent>/episodes.jsonl`, `<agent>/manifest.json`, `<agent>/summary.{json,md}` | `python scripts/run_benchmark.py` | Byte-identical across reruns. The SHA-256 of each `episodes.jsonl` and the audit head are recorded in the summaries, and `tests/test_runner.py::test_the_committed_oracle_run_is_reproduced_exactly` regenerates the oracle run and compares both. |
 | `results/benchmark/<agent>/audit/` | the same run | Git-ignored, but byte-reproducible (fixed timestamps for scripted runs); verified against the head in `summary.json` before the summary is written. |
 | `results/verifier/verifier_stress.{json,md}` | `python scripts/verifier_stress.py` | Deterministic (fixed seeds). |
 | `results/power/power.{json,md}` | `python scripts/power_analysis.py` | Deterministic (design seeds, fixed simulation seed). Design only: no model is run. |

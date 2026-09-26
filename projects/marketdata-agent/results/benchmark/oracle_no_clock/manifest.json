@@ -1,0 +1,54 @@
+{
+  "agent": "oracle_no_clock",
+  "arm": {
+    "clock_enforced": false,
+    "prompt_version": "copilot_system_v1",
+    "tools": "default"
+  },
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=packages/quant-marketdata/src:projects/marketdata-agent/src python projects/marketdata-agent/scripts/run_benchmark.py",
+  "description": "ablation A1 check: the oracle policy with the refusal of later dates lifted (expected identical to oracle)",
+  "is_llm": false,
+  "max_steps": 8,
+  "policy_sha256": "2335d52321debf6df857d189ef2c0969e986e57bddc930cf7a8a6164ce825579",
+  "prompt_version": "copilot_system_v1",
+  "suite": {
+    "counts": {
+      "compute": 72,
+      "lookup": 30,
+      "multi_step": 24,
+      "pit_trap": 24,
+      "policy_trap": 12,
+      "unknown_symbol": 12
+    },
+    "dataset": {
+      "end": "2023-12-29",
+      "idio_vol": 0.22,
+      "listings": {
+        "SYN09": "2022-09-01",
+        "SYN10": "2023-09-01"
+      },
+      "market_vol": 0.18,
+      "seed": 20240601,
+      "source": "synthetic",
+      "start": "2021-01-04",
+      "symbols": [
+        "SYN01",
+        "SYN02",
+        "SYN03",
+        "SYN04",
+        "SYN05",
+        "SYN06",
+        "SYN07",
+        "SYN08",
+        "SYN09",
+        "SYN10"
+      ]
+    },
+    "distinct_items": 174,
+    "generator_version": "marketdata-agent/bench-generator/v3",
+    "n_tasks": 174,
+    "seed": 20240917,
+    "sha256": "004b9610ce4e0edfe9ecfc7d8c209aa613732b46624f26075cae0ed020e6f005"
+  },
+  "written": "before the first episode"
+}

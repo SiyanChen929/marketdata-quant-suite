@@ -39,8 +39,20 @@ TRUE_RATES: tuple[float, ...] = (0.97, 0.98, 0.99, 0.995)
 ICCS: tuple[float, ...] = (0.0, 0.05, 0.2)
 NONINFERIORITY_MARGINS: tuple[float, ...] = (0.02, 0.05)
 DISCORDANCE_RATES: tuple[float, ...] = (0.05, 0.10, 0.20)
-SWEEP_SUITES = 4
+# Effort sweep (H4). Each effort level below the main one (``low`` and ``medium`` below ``high``) is compared
+# with the sweep's own ``high`` cell: the same suites and the same number of repetitions. Holm across the
+# comparisons makes the first step test at alpha / HOLM_COMPARISONS, so the sweep is sized for that level.
+SWEEP_SUITES = 5
 SWEEP_REPETITIONS = 2
+HOLM_COMPARISONS = 2
+# Arms that carry a hypothesis: A1 (no clock, H2c) and the decoy execution tool (H3a with the decoy). Each runs
+# on the first ARM_SUITES evaluation suites of the main run with ARM_REPETITIONS repetitions, and is paired
+# task by task with the main configuration's first ARM_REPETITIONS repetitions of the same suites.
+ARM_SUITES = 4
+ARM_REPETITIONS = 2
+# H2c: probability that a task's answer matches its numeric hindsight value only in the A1 arm (b) or only
+# with the clock enforced (c), in at least one of the ARM_REPETITIONS repetitions.
+H2C_DISCORDANCE: tuple[tuple[float, float], ...] = ((0.02, 0.0), (0.05, 0.0), (0.05, 0.01), (0.10, 0.01))
 
 
 @dataclass(frozen=True)

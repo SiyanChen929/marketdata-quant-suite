@@ -152,3 +152,26 @@ def test_ask_writes_a_fresh_episode_per_call_and_hints_credentials_only_for_cred
     assert "ANTHROPIC_API_KEY" not in err and "server_error" in err
     assert main(args, backend_factory=_failing_factory("missing_credentials")) == 2
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+def test_eval_seed_builds_the_preregistered_evaluation_suite_and_records_it_before_the_run(tmp_path, capsys):
+    """Regression: `bench run --seed` was documented as the evaluation command but ran on the development panel."""
+
+    from marketdata_agent.bench import DEFAULT_SEED, generate_suite
+    from marketdata_agent.bench.design import EVALUATION_COUNTS
+
+    path = tmp_path / "eval.json"
+    assert main(["bench", "tasks", "--eval-seed", "1001", "--out", str(path)]) == 0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    development = generate_suite(DEFAULT_SEED)
+    assert len(payload["tasks"]) == sum(EVALUATION_COUNTS.values()) == 234
+    assert payload["seed"] == 1001 and payload["dataset"] != development.dataset.to_dict()
+    assert not {t["metadata"]["item_key"] for t in payload["tasks"]} & set(development.item_keys())
+
+    out = tmp_path / "run"
+    assert main(["bench", "run", "--agent", "oracle", "--eval-seed", "1001", "--tasks", "6", "--out", str(out)]) == 0
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["suite"]["seed"] == 1001 and manifest["suite"]["n_tasks"] == 6
+    capsys.readouterr()
+    assert main(["bench", "run", "--agent", "oracle", "--seed", "7", "--tasks", "6", "--out", str(tmp_path / "dev")]) == 0
+    assert "use --eval-seed for an evaluation suite" in capsys.readouterr().err

@@ -20,9 +20,9 @@ delisting-inclusive universe; neither exists yet.
 \paragraph{Verifier heuristics.} The verifier does not extract numbers written
 in words. It marks a correctly derived number that no tool reported, such as
 the difference of two returns, as unsupported. It treats four-digit unsigned
-integers from 1900 to 2100 as years. Binding covers bar fields, dates and
-range ends of daily-bar results only, so matching is otherwise
-statistic-agnostic within a result: a simple return can match the log return
+integers from 1900 to 2100 as years. Binding covers the bar fields, dates and
+range ends of daily-bar results and the session dates of single-session
+closes only, so matching is otherwise statistic-agnostic within a result: a simple return can match the log return
 of the same result. Coarsely rounded claims and small counts can match an
 unrelated output by chance (Table~\ref{tab:injections}). Attribution is
 heuristic when one sentence cites several results. Each limit is covered by a
@@ -32,7 +32,8 @@ real model answers.
 \paragraph{Scoring.} Abstentions and refusals must be the bare token on the
 answer line, which counts a correct but verbose answer line as a format
 failure (it is flagged separately). The execution-claim detector is a
-heuristic that has not been validated on annotated answers.
+heuristic that has not been validated on annotated answers, so refusal
+accuracy is also reported without it.
 
 \paragraph{Template questions and protocol dependence.} Questions come from
 templates, and scoring depends on the \code{ANSWER:} line and two tokens.

@@ -3,7 +3,8 @@
 * :func:`threshold_decision`: the plan's Wilson threshold rule, over distinct items;
 * :func:`all_repetitions_success`: collapse repeated episodes to one success per
   distinct item (success only if every repetition succeeds);
-* :func:`mcnemar_exact`: exact McNemar test for paired binary outcomes (H2c, H4);
+* :func:`mcnemar_exact`: exact McNemar test for paired binary outcomes (H2c, H4),
+  and :func:`mcnemar_power`, its exact power;
 * :func:`benjamini_hochberg` and :func:`holm`: multiplicity control;
 * :func:`cluster_bootstrap_ci`: percentile bootstrap that resamples clusters;
 * power helpers: :func:`min_successes`, :func:`power_threshold` (independent
@@ -234,6 +235,31 @@ def noninferiority_paired_n(discordance: float, margin: float, *, alpha: float =
     return int(math.ceil(discordance * (z_alpha + z_beta) ** 2 / margin**2))
 
 
+def mcnemar_power(n: int, p_b: float, p_c: float, *, alpha: float = 0.05) -> float:
+    """Exact power of the one-sided exact McNemar test (:func:`mcnemar_exact`, ``alternative="greater"``).
+
+    ``n`` paired items; each is discordant in favour of arm 1 with probability
+    ``p_b`` and in favour of arm 2 with probability ``p_c``. The number of
+    discordant pairs is binomial, and so is the split given that number.
+    """
+
+    if n < 0 or p_b < 0.0 or p_c < 0.0 or p_b + p_c > 1.0:
+        raise ValueError("need n >= 0 and non-negative discordance probabilities that sum to at most 1")
+    discordant = p_b + p_c
+    if discordant == 0.0:
+        return 0.0
+    share = p_b / discordant
+    power = 0.0
+    for d in range(1, n + 1):
+        weight = _binomial_pmf(n, d, discordant)
+        if weight < 1e-300:
+            continue
+        critical = next((b for b in range(d + 1) if binomial_tail(d, b, 0.5) <= alpha), None)
+        if critical is not None:
+            power += weight * binomial_tail(d, critical, share)
+    return min(1.0, power)
+
+
 def _z(p: float) -> float:
     """Standard-normal quantile by bisection on ``erf`` (accurate to about 1e-10)."""
 
@@ -256,6 +282,7 @@ __all__ = [
     "holm",
     "max_failures_at_most",
     "mcnemar_exact",
+    "mcnemar_power",
     "min_successes",
     "noninferiority_paired_n",
     "power_at_most",

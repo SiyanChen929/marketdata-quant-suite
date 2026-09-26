@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
@@ -164,7 +164,9 @@ class ToolRuntime:
         Tool-level failures are returned as ``is_error`` outcomes, not raised.
         """
 
-        decision = self.gate.check(tool_name, args, self.clock, cutoff=self.context.cutoff)
+        decision = self._mark_later_listed_symbols(
+            str(tool_name), args, self.gate.check(tool_name, args, self.clock, cutoff=self.context.cutoff)
+        )
         if self.audit is not None:
             self.audit.log_policy_decision(
                 self.episode_id,
@@ -181,6 +183,40 @@ class ToolRuntime:
             self.audit.log_tool_call(self.episode_id, outcome.to_record())
         self._outcomes.append(outcome)
         return outcome
+
+    def _mark_later_listed_symbols(self, tool_name: str, args: Any, decision: Decision) -> Decision:
+        """In the no-clock ablation, count a served call that names a symbol listing after *t* as look-ahead.
+
+        With the clock enforced such a symbol is unknown to the view, so the
+        call fails with ``unknown_symbol``. Without the clock it is served,
+        which reveals that the symbol will exist; that is look-ahead through
+        the symbol instead of through a date, so it is recorded as an
+        unenforced ``lookahead_violation`` like a later date.
+        """
+
+        view = self.context.data
+        spec = self.registry.get(tool_name)
+        if view.clock_enforced or not decision.allowed or spec is None or not isinstance(args, Mapping):
+            return decision
+        if Code.LOOKAHEAD in decision.unenforced:
+            return decision
+        named: list[str] = []
+        for name, role in spec.fields.items():
+            value = args.get(name)
+            if role == "symbol" and isinstance(value, str):
+                named.append(value)
+            elif role == "symbols" and isinstance(value, (list, tuple)):
+                named.extend(str(item) for item in value)
+        wanted = {symbol.strip().upper() for symbol in named if symbol.strip()}
+        if not wanted:
+            return decision
+        try:
+            later = (wanted - set(view.available_symbols())) & set(view.reachable_symbols())
+        except Exception:  # noqa: BLE001 - a source failure surfaces from the handler as an error result
+            return decision
+        if not later:
+            return decision
+        return replace(decision, unenforced=(*decision.unenforced, Code.LOOKAHEAD))
 
     def _run(self, tool_name: str, args: dict[str, Any], tool_use_id: str | None, decision: Decision) -> ToolOutcome:
         spec = self.registry.get(tool_name)
@@ -227,7 +263,8 @@ class ToolRuntime:
 
         A call is a look-ahead attempt when it names a date after the nominal
         as-of date, whether it was refused (clock enforced) or served (the
-        no-clock ablation, ``lookahead_unenforced``).
+        no-clock ablation, ``lookahead_unenforced``). In the ablation a served
+        call that names a symbol listing after the as-of date also counts.
         """
 
         denials: Counter[str] = Counter()

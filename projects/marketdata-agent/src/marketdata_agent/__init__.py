@@ -1,4 +1,4 @@
-"""Governed, point-in-time-safe LLM trading copilot over the suite's MarketData gateway.
+"""Governed, point-in-time-safe LLM research copilot over the suite's MarketData gateway (it never trades).
 
 Core: confirmed-only data access, an as-of clock that refuses look-ahead, a
 policy gate that counts every execution and look-ahead attempt, strict typed

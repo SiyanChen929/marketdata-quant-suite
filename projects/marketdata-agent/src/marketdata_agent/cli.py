@@ -11,8 +11,14 @@
     writes files under a fresh, timestamped episode id.
     Server-side fallback is on by default here (``--no-fallback`` turns it off),
     and the served model is always shown.
-``marketdata-agent bench run --agent NAME``
-    Run one agent over the generated suite. The scripted baselines are offline.
+``marketdata-agent bench run --agent NAME [--eval-seed SEED | --seed SEED]``
+    Run one agent over a generated suite. ``--eval-seed`` builds the
+    pre-registered evaluation suite of that seed (its own synthetic panel, the
+    evaluation composition, no item shared with the development suite);
+    without it the run uses the development suite, and ``--seed`` only
+    changes the task draws on the public development panel. The run manifest
+    (seed, suite SHA-256) is written before the first episode. The scripted
+    baselines are offline.
     ``anthropic`` needs credentials and keeps fallback off unless ``--fallback``
     is given. ``--no-clock`` (ablation A1), ``--prompt-version`` (A2, A6),
     ``--tools none`` (closed book, A5) and ``--tools decoy`` (an offered but
@@ -69,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         prog="marketdata-agent",
-        description="Governed, point-in-time-safe trading copilot over the MarketData gateway.",
+        description="Governed, point-in-time-safe research copilot over the MarketData gateway (it never trades).",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -103,7 +109,19 @@ def build_parser() -> argparse.ArgumentParser:
     run = bench_commands.add_parser("run", help="run one agent over the generated suite")
     run.add_argument("--agent", required=True, choices=(*BASELINE_NAMES, "anthropic"))
     run.add_argument("--tasks", type=int, default=None, help="stratified subset size (default: all)")
-    run.add_argument("--seed", type=int, default=None, help="task-generation seed (default: the suite default)")
+    suites = run.add_mutually_exclusive_group()
+    suites.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="development-style suite: task draws with this seed on the public development panel (pilots only)",
+    )
+    suites.add_argument(
+        "--eval-seed",
+        type=int,
+        default=None,
+        help="the pre-registered evaluation suite of this seed (own panel, evaluation composition, disjoint from development)",
+    )
     run.add_argument("--out", default=None, help="output directory (default: runs/bench/<agent>)")
     _model_arguments(run)
     run.add_argument("--fallback", action="store_true", help="enable server-side fallback (off for benchmarks)")
@@ -123,7 +141,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--backoff", type=float, default=30.0, help="initial retry wait in seconds (doubles per attempt)")
 
     tasks = bench_commands.add_parser("tasks", help="write the generated suite as JSON")
-    tasks.add_argument("--seed", type=int, default=None)
+    task_suites = tasks.add_mutually_exclusive_group()
+    task_suites.add_argument("--seed", type=int, default=None)
+    task_suites.add_argument("--eval-seed", type=int, default=None)
     tasks.add_argument("--tasks", type=int, default=None)
     tasks.add_argument("--out", default="-", help="output path, or - for stdout")
     return parser
@@ -250,11 +270,20 @@ def _backup(path: Path) -> Path:
 
 
 def _bench(args: argparse.Namespace, backend_factory: BackendFactory | None) -> int:
-    from .bench import DEFAULT_SEED, anthropic_agent, baseline_agent, generate_suite, run_agent
+    from .bench import DEFAULT_SEED, anthropic_agent, baseline_agent, generate_evaluation_suites, generate_suite, run_agent
     from .bench.runner import AgentSpec
 
-    seed = DEFAULT_SEED if args.seed is None else args.seed
-    suite = generate_suite(seed)
+    if args.eval_seed is not None:
+        suite = generate_evaluation_suites([args.eval_seed])[0]
+    else:
+        seed = DEFAULT_SEED if args.seed is None else args.seed
+        if args.seed is not None and args.seed != DEFAULT_SEED:
+            print(
+                "note: --seed draws tasks on the public development panel with the development composition, and they "
+                "may repeat development items; use --eval-seed for an evaluation suite",
+                file=sys.stderr,
+            )
+        suite = generate_suite(seed)
     if args.tasks is not None:
         suite = suite.subset(args.tasks)
     if args.bench_command == "tasks":

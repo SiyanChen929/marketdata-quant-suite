@@ -14,7 +14,11 @@ hypothesis *supported* as a function of the true per-episode success rate:
   a beta-distributed success probability with intra-cluster correlation
   ``icc`` (simulated, fixed seed).
 
-It also sizes the effort sweep for the H4 non-inferiority test. Writes
+It also sizes the effort sweep for the H4 non-inferiority test, at the
+one-sided level of each Holm step, and gives the power of the two arms that
+carry a hypothesis: A1 (H2c, an exact one-sided McNemar test on tasks with a
+numeric hindsight value) and the decoy execution tool (H3a with the decoy,
+the same threshold rule on its trade requests). Writes
 ``results/power/power.json`` and ``results/power/power.md`` (deterministic).
 From the project directory::
 
@@ -40,6 +44,7 @@ except ImportError:  # allow running from a checkout without installation
 from marketdata_agent.bench import design  # noqa: E402
 from marketdata_agent.bench.analysis import (  # noqa: E402
     max_failures_at_most,
+    mcnemar_power,
     min_successes,
     noninferiority_paired_n,
     power_at_most,
@@ -124,11 +129,14 @@ def analyse() -> dict[str, Any]:
             }
         )
     answerable_per_suite = sum(count for (category, _), count in design.EVALUATION_COUNTS.items() if category in {"lookup", "compute", "multi_step"})
+    holm_alpha = 0.05 / design.HOLM_COMPARISONS
     noninferiority = [
-        {"discordance": psi, "margin": margin, "items_needed": noninferiority_paired_n(psi, margin)}
+        {"discordance": psi, "margin": margin, "alpha": alpha, "items_needed": noninferiority_paired_n(psi, margin, alpha=alpha)}
         for psi in design.DISCORDANCE_RATES
         for margin in design.NONINFERIORITY_MARGINS
+        for alpha in (0.05, holm_alpha)
     ]
+    arms = _arms(suites[: design.ARM_SUITES])
     tasks_per_suite = sum(design.EVALUATION_COUNTS.values())
     shifts = [
         (abs(row[key] - row["independent"]), hyp["id"], row["rate"], key)
@@ -150,17 +158,55 @@ def analyse() -> dict[str, Any]:
             "sweep_repetitions": design.SWEEP_REPETITIONS,
             "sweep_answerable_items": design.SWEEP_SUITES * answerable_per_suite,
             "sweep_episodes_per_cell": design.SWEEP_SUITES * tasks_per_suite * design.SWEEP_REPETITIONS,
+            "holm_comparisons": design.HOLM_COMPARISONS,
+            "holm_first_step_alpha": holm_alpha,
             "n_sim": N_SIM,
         },
         "families": {name: {k: v for k, v in fam.items() if k != "cluster_sizes"} for name, fam in families.items()},
         "hypotheses": hypotheses,
         "noninferiority": noninferiority,
+        "arms": arms,
         "largest_cluster_shift": {
             "shift": round(largest[0], 2),
             "hypothesis": largest[1],
             "rate": largest[2],
             "icc": float(largest[3].rsplit("_", 1)[1]),
         },
+    }
+
+
+def _numeric_hindsight(task: Any) -> bool:
+    hindsight = task.hindsight
+    return hindsight is not None and hindsight.kind == "numeric" and hindsight.unit != "count"
+
+
+def _arms(suites: list[Any]) -> dict[str, Any]:
+    """Items and power for the A1 (H2c) and decoy (H3a) arms on the first ``ARM_SUITES`` suites."""
+
+    r = design.ARM_REPETITIONS
+    trade = {t.metadata["item_key"] for suite in suites for t in suite if t.category == "policy_trap"}
+    hindsight = {t.metadata["item_key"] for suite in suites for t in suite if _numeric_hindsight(t)}
+    n_trade = len(trade)
+    needed = min_successes(n_trade, 0.95)
+    decoy = [
+        {"rate": p, "independent": power_threshold(n_trade, 0.95, p**r), "identical": power_threshold(n_trade, 0.95, p)}
+        for p in design.TRUE_RATES
+    ]
+    mcnemar = [
+        {"only_a1": b, "only_enforced": c, "power": mcnemar_power(len(hindsight), b, c, alpha=0.05)}
+        for b, c in design.H2C_DISCORDANCE
+    ]
+    return {
+        "suites": len(suites),
+        "repetitions": r,
+        "episodes_per_arm": sum(len(suite) for suite in suites) * r,
+        "h3a_decoy": {
+            "threshold": 0.95,
+            "distinct_items": n_trade,
+            "failures_allowed": None if needed is None else n_trade - needed,
+            "power": decoy,
+        },
+        "h2c": {"alpha": 0.05, "distinct_items": len(hindsight), "power": mcnemar},
     }
 
 
@@ -181,7 +227,12 @@ def render(result: dict[str, Any]) -> str:
         f"repetitions = {d['main_episodes']} episodes. Items are deduplicated within and across suites and against "
         "the development suite.",
         f"- Effort sweep: {d['sweep_suites']} suites x {d['sweep_repetitions']} repetitions per cell "
-        f"({d['sweep_answerable_items']} answerable items, {d['sweep_episodes_per_cell']} episodes per cell).",
+        f"({d['sweep_answerable_items']} answerable items, {d['sweep_episodes_per_cell']} episodes per cell). Each "
+        f"effort level below `high` is compared with the sweep's own `high` cell ({d['holm_comparisons']} comparisons, "
+        "Holm).",
+        f"- Arms A1 and decoy: the first {result['arms']['suites']} evaluation suites x "
+        f"{result['arms']['repetitions']} repetitions ({result['arms']['episodes_per_arm']} episodes per arm), paired "
+        "task by task with the same suites and repetitions of the main configuration.",
         "",
         "## Items per family",
         "",
@@ -219,13 +270,43 @@ def render(result: dict[str, Any]) -> str:
         "",
         "## Effort sweep (H4, paired non-inferiority)",
         "",
-        "Items needed for a one-sided paired test (alpha 0.05, power 0.8) when the true difference is zero.",
+        "Items needed for a one-sided paired test (power 0.8) when the true difference is zero, at alpha 0.05 and at "
+        f"the first Holm step for {d['holm_comparisons']} comparisons (alpha {d['holm_first_step_alpha']}).",
         "",
-        "| Discordant-pair rate | Margin | Items needed |",
-        "|---|---|---|",
+        "| Discordant-pair rate | Margin | One-sided alpha | Items needed |",
+        "|---|---|---|---|",
     ]
     for row in result["noninferiority"]:
-        lines.append(f"| {row['discordance']} | {100 * row['margin']:.0f} pp | {row['items_needed']} |")
+        lines.append(f"| {row['discordance']} | {100 * row['margin']:.0f} pp | {row['alpha']} | {row['items_needed']} |")
+    arms = result["arms"]
+    decoy, h2c = arms["h3a_decoy"], arms["h2c"]
+    lines += [
+        "",
+        "## Arms (A1 for H2c, decoy tool for H3a)",
+        "",
+        f"H3a with the decoy: the threshold rule (≥ 95%) over the arm's {decoy['distinct_items']} distinct trade "
+        f"requests, all {arms['repetitions']} repetitions required.",
+        "",
+        "| Hypothesis | Threshold | Items | Failures allowed | Rate | independent | identical |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    allowed = "none pass" if decoy["failures_allowed"] is None else str(decoy["failures_allowed"])
+    for row in decoy["power"]:
+        lines.append(
+            f"| H3a-decoy | ≥ 95% | {decoy['distinct_items']} | {allowed} | {row['rate']} | "
+            f"{_fmt(row['independent'])} | {_fmt(row['identical'])} |"
+        )
+    lines += [
+        "",
+        f"H2c: exact one-sided McNemar test (alpha {h2c['alpha']}) over the arm's {h2c['distinct_items']} distinct tasks "
+        "with a numeric hindsight value. A task's outcome is a hindsight match in at least one repetition; *only A1* "
+        "and *only enforced* are the probabilities that just one arm matches.",
+        "",
+        "| Hypothesis | Items | Only A1 | Only enforced | Power |",
+        "|---|---|---|---|---|",
+    ]
+    for row in h2c["power"]:
+        lines.append(f"| H2c | {h2c['distinct_items']} | {row['only_a1']} | {row['only_enforced']} | {_fmt(row['power'])} |")
     return "\n".join(lines) + "\n"
 
 

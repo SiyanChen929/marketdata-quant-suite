@@ -350,3 +350,99 @@ def test_the_first_close_of_a_range_reported_as_the_latest_close_is_unsupported(
     both = "What was the return from the close of the first confirmed session on or after X to the most recent close?"
     report = verify_grounding("It went from $101.00 [r:gggggggggggg] to $106.55 [r:gggggggggggg].", BARS, question=both)
     assert report.n_supported == 2
+
+
+def _bars(runtime, **args):
+    return runtime.call_tool("get_daily_bars", {"symbol": "SYN01", **args}).result
+
+
+def test_a_close_from_another_session_is_unsupported_when_the_question_names_a_date(runtime):
+    """Regression: first_close/last_close of a wider range used to support a close claimed for a named date."""
+
+    question = "What was the closing price of SYN01 on 2023-06-15? Report it in US dollars with two decimals."
+    wide = _bars(runtime, start="2023-06-15", end="latest")  # last_close is the 2023-06-30 close
+    before = _bars(runtime, start="2023-05-01", end="2023-06-15")  # first_close is the 2023-05-01 close
+    exact = _bars(runtime, start="2023-06-15", end="2023-06-15")
+    results = runtime.results()
+    for result, key in ((wide, "last_close"), (before, "first_close")):
+        value = result.payload["summary"][key]
+        assert abs(value - exact.payload["summary"]["last_close"]) >= 0.005
+        text = f"ANSWER: ${value:.2f} [r:{result.result_id}]\nSYN01 closed at ${value:.2f} on 2023-06-15 [r:{result.result_id}]."
+        report = verify_grounding(text, results, question=question)
+        assert report.n_supported == 0 and report.fully_grounded is False, key
+        assert {check.note for check in report.checks} == {"date_mismatch"}, key
+    value = exact.payload["summary"]["last_close"]
+    report = verify_grounding(f"ANSWER: ${value:.2f} [r:{exact.result_id}]", results, question=question)
+    assert report.fully_grounded is True
+    uncited = verify_grounding(f"SYN01 closed at ${wide.payload['summary']['last_close']:.2f}.", results, question=question)
+    assert uncited.n_supported == 0  # an uncited claim may match any result, but not a close of another session
+
+
+def test_range_end_closes_stay_supported_when_the_named_dates_describe_the_range(runtime):
+    both = runtime.call_tool("period_return", {"symbol": "SYN01", "start": "2023-06-10", "end": "2023-06-29"}).result
+    start_close, end_close = both.payload["start_close"], both.payload["end_close"]
+    assert both.payload["start_date"] == "2023-06-12"  # the start is a Saturday: the base is the next session
+    question = (
+        "What was the simple return of SYN01 from the close of the first confirmed session on or after 2023-06-10 "
+        "to the close of the last confirmed session on or before 2023-06-29?"
+    )
+    text = f"SYN01 went from ${start_close:.2f} to ${end_close:.2f} [r:{both.result_id}]."
+    assert verify_grounding(text, runtime.results(), question=question).fully_grounded is True
+
+    ranked = runtime.call_tool(
+        "compare_returns", {"symbols": ["SYN01", "SYN02"], "start": "2023-06-01", "end": "latest"}
+    ).result
+    entry = ranked.payload["ranking"][0]
+    question = (
+        "Rank SYN01 and SYN02 by simple return from the close of the first confirmed session on or after 2023-06-01 "
+        "to the close of the most recent confirmed session, highest first."
+    )
+    text = f"{entry['symbol']} went from ${entry['start_close']:.2f} to ${entry['end_close']:.2f} [r:{ranked.result_id}]."
+    assert verify_grounding(text, runtime.results(), question=question).fully_grounded is True
+    on_date = f"What was the closing price of {entry['symbol']} on 2023-06-01?"
+    report = verify_grounding(f"It closed at ${entry['end_close']:.2f} [r:{ranked.result_id}].", runtime.results(), question=on_date)
+    assert report.checks[0].note == "date_mismatch"
+
+
+def test_peak_and_trough_closes_need_their_date_or_the_range(runtime):
+    result = runtime.call_tool("max_drawdown", {"symbol": "SYN01", "start": "2023-01-03", "end": "latest"}).result
+    peak = result.payload["peak_close"]
+    assert result.payload["peak_date"] != "2023-01-03"
+    text = f"The peak close was ${peak:.2f} [r:{result.result_id}]."
+    ranged = "What was the maximum drawdown of SYN01's closing price between 2023-01-03 and the most recent confirmed session?"
+    assert verify_grounding(text, runtime.results(), question=ranged).fully_grounded is True
+    on_date = "What was the closing price of SYN01 on 2023-01-03?"
+    assert verify_grounding(f"It closed at ${peak:.2f} [r:{result.result_id}].", runtime.results(), question=on_date).checks[0].note == "date_mismatch"
+    dated = f"The peak close was ${peak:.2f} on {result.payload['peak_date']} [r:{result.result_id}]."
+    assert verify_grounding(dated, runtime.results(), question=on_date).fully_grounded is True
+
+
+def test_an_iso_date_binds_only_that_year():
+    results = {"yyyyyyyyyyyy": {"close[2022-06-29]": 105.0, "close[2023-06-29]": 99.0}}
+    question = "What was the closing price of SYN01 on 2023-06-29?"
+    (check,) = verify_grounding("ANSWER: $105.00 [r:yyyyyyyyyyyy]", results, question=question).checks
+    assert check.note == "date_mismatch"
+    assert verify_grounding("On June 29 it closed at $105.00 [r:yyyyyyyyyyyy].", results).checks[0].supported
+
+
+@pytest.mark.parametrize(
+    ("text", "claims"),
+    [
+        ("ANSWER:4.21%", ["4.21%"]),
+        ("ANSWER:-4.21%", ["-4.21%"]),
+        ("SYN01 return:4.21%, vol:25.10%", ["4.21%", "25.10%"]),
+        ('{"simple_return":0.0421}', ["0.0421"]),
+        ("price:$105.37", ["$105.37"]),
+        ("count:9", ["9"]),
+    ],
+)
+def test_numbers_after_a_colon_are_claims(text, claims):
+    """Regression: any number right after ':' used to be dropped as an identifier."""
+
+    assert claims_of(text) == claims
+
+
+def test_a_bare_integer_after_an_id_like_token_and_colon_is_an_identifier():
+    assert reasons_of("Proposal p:3 and SYN01:2 were logged.") == {"3": "identifier", "01": "identifier", "2": "identifier"}
+    report = verify_grounding("ANSWER:4.21% [r:rrrrrrrrrrrr]", NEGATIVE)
+    assert report.n_claims == 1 and report.checks[0].note == "sign_mismatch"

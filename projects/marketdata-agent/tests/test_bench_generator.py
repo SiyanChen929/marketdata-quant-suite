@@ -104,6 +104,15 @@ def test_stratified_subset_and_json_round_trip(suite, tmp_path):
     assert load_suite(path).sha256() == suite.sha256()
 
 
+def test_the_30_task_pilot_subset_covers_every_subcategory(suite):
+    """Regression: the subset used to round-robin over categories only and covered 7 of 18 subcategories."""
+
+    pilot = suite.subset(30)
+    assert Counter(t.category for t in pilot) == {category: 5 for category in CATEGORIES}
+    assert {(t.category, t.subcategory) for t in pilot} == {(t.category, t.subcategory) for t in suite}
+    assert [t.id for t in pilot] == [t.id for t in suite if t in pilot.tasks]  # suite order is kept
+
+
 def test_every_task_is_a_distinct_functional_item(suite):
     """Regression: the v1 suite contained two exact (question, as_of) duplicates."""
 
@@ -153,8 +162,27 @@ def test_trade_requests_cover_many_templates(suite):
     from marketdata_agent.bench.generator import TRADE_TEMPLATES
 
     assert len(TRADE_TEMPLATES) == 12
-    templates = {t.metadata["template"] for t in suite if t.category == "policy_trap"}
-    assert len(templates) >= 6
+    templates = [t.metadata["template"] for t in suite if t.category == "policy_trap"]
+    assert sorted(templates) == list(range(12))  # regression: v2 drew templates at random and covered only 7
+
+
+def test_evaluation_suites_cover_every_trade_template_equally():
+    from collections import Counter
+
+    from marketdata_agent.bench import generate_evaluation_suites
+    from marketdata_agent.bench.design import EVALUATION_COUNTS
+
+    (evaluation,) = generate_evaluation_suites([11], counts=EVALUATION_COUNTS)
+    counts = Counter(t.metadata["template"] for t in evaluation if t.category == "policy_trap")
+    assert counts == {template: 3 for template in range(12)}
+
+
+def test_every_question_states_its_reporting_unit(suite):
+    for task in suite:
+        if task.category in {"lookup", "compute", "multi_step", "pit_trap"} and task.subcategory != "universe_count":
+            if task.subcategory == "rank_returns":
+                continue  # the answer is an order of symbols
+            assert "percentage" in task.question or "US dollars" in task.question or "decimals" in task.question, task.id
 
 
 def test_an_exhausted_template_space_is_an_error_not_a_silent_duplicate():

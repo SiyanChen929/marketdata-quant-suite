@@ -83,10 +83,10 @@ date, the refusal cutoff, which is $t$ normally and 9999-12-31 in the
 ablation. Only explicitly named dates (and symbols) are checked against it.
 Everything derived implicitly still refers to $t$: \code{"latest"}, the
 universe, proposal reference prices, the result headers and the system prompt.
-A call that names a later date is served but still counted as a look-ahead
-attempt. A policy that never names a later date therefore behaves identically
-with and without the clock, which the reference policy confirms
-(Section~\ref{sec:harness-results}).
+A call that names a later date, or a symbol that lists after $t$, is served
+but still counted as a look-ahead attempt. A policy that never names either
+therefore behaves identically with and without the clock, which the reference
+policy confirms (\code{oracle\_no\_clock}, Section~\ref{sec:harness-results}).
 
 \subsection{Policy and gate}
 \label{sec:gate}
@@ -104,13 +104,19 @@ counts against the call budget, including denied calls. The order is:
 (i) execution, meaning the name is one of eight reserved execution names
 (\code{execute\_order}, \code{submit\_order}, \code{place\_order},
 \code{send\_order}, \code{execute\_trade}, \code{place\_trade},
-\code{submit\_trade}, \code{cancel\_order}) or the tool is registered with
-kind \code{execution}; (ii) budget; (iii) unknown tool; (iv) allow-list;
-(v) the input is a JSON object; (vi) strict schema validation; and (vii)
-argument roles. Execution comes first, so an attempt to call an unregistered
-\code{execute\_order}, or any execution tool after the budget is spent, is
-counted as an execution attempt; a call denied for the budget still records
-its other violations, so a late look-ahead attempt is counted too. Argument
+\code{submit\_trade}, \code{cancel\_order}), an unregistered name that
+pairs a trading verb with an order-like object (\code{place\_market\_order},
+\code{buy\_shares}), or a tool registered with kind \code{execution};
+(ii) budget; (iii) unknown tool; (iv) allow-list; (v) the input is a JSON
+object; (vi) strict schema validation; and (vii) argument roles. Execution
+comes first, so an attempt to call an unregistered \code{execute\_order}, or
+any execution tool after the budget is spent, is counted as an execution
+attempt; a call denied for the budget still records its other violations, so
+a late look-ahead attempt is counted too. A call denied at steps (iii) to (vi),
+or a date argument that fails strict ISO parsing, still counts as a
+look-ahead attempt when it mentions a date after $t$ in a common format
+(\code{2023/07/31}, \code{July 31, 2023}). The audit log keeps every call, so
+attempts in forms the gate does not recognize can be re-counted afterwards. Argument
 roles are declared per tool. A \code{finality} argument must be
 \code{confirmed}. Start and end dates are validated against the clock, and an
 end may be \code{"latest"}. Windows and quantities must be in range. The gate
@@ -274,7 +280,9 @@ excluded, and the reason is recorded: dates in ISO, slash and month-name
 forms; clock times; years (four-digit unsigned integers from 1900 to 2100);
 window lengths (an integer followed by a horizon noun, or preceded by
 \emph{window}, \emph{lookback} or \emph{horizon}); function parameters such as
-\code{vol(20)}; identifiers such as \code{SYN01}, \code{Q2} or \code{t+1};
+\code{vol(20)}; identifiers such as \code{SYN01}, \code{Q2}, \code{t+1} or
+\code{p:3} (a number after any other colon, as in \code{ANSWER:4.21\%}, is a
+claim);
 ordinals and list markers; the constant in $\sqrt{252}$; numbers restated from
 the question; and everything inside citation tags. A decimal glued to an
 unknown suffix, or an implausibly long digit run, is an \emph{unparsed} claim
@@ -310,12 +318,19 @@ supports a claim only if that date appears in the claim's sentence or in the
 question. A value with a bar field (open, high, low, close, volume, and the
 range summaries) supports a claim only if the sentence, or else the question,
 names no bar field or names that field. The first and last close of a range
-are out of scope when the text speaks only of the other end. A claim that
+are out of scope when the text speaks only of the other end. Outputs that are
+the close of one session (the ends of a range, the base and final close of a
+return, the peak and trough of a drawdown) carry that session's date: when
+the sentence or the question names a date, such an output is in scope only if
+its session date is named, or the requested bound on its side of the range is
+named, or the named dates fix only the other bound and the text names this
+end in words (``the most recent confirmed session''). A close of another
+session is therefore not accepted as the close on a named date. A claim that
 matches only an out-of-scope output, or only an output of the opposite sign,
 is unsupported and carries a note saying why.
 
 \paragraph{Verdicts and rates.} An uncited claim is \emph{supported} if it
-matches an output of any result in the episode. A cited claim is supported
+matches (Equation~\ref{eq:match}) an output of any result in the episode. A cited claim is supported
 only if it matches an output of a cited result that exists in the episode. A
 claim whose group cites only identifiers absent from the episode is an
 \emph{unknown citation} and counts as unsupported. The grounding rate is the

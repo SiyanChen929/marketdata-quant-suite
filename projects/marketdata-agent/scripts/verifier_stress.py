@@ -19,7 +19,17 @@ Two measurements, both on the synthetic development suite and both deterministic
    * ``sign_flip``: the true value with the opposite sign (unsigned when the
      truth is negative);
    * ``wrong_row`` / ``wrong_field``: for daily-bar lookups, another row's
-     close, or the period high, reported as the close.
+     close, or the period high, reported as the close;
+   * ``range_last_close`` / ``range_first_close``: for questions about the
+     close on a named date, the ``last_close`` of a range that starts on that
+     date and ends at the latest session, or the ``first_close`` of a range
+     that ends on it, reported as the close on the named date (a close from
+     another session).
+
+Random values are drawn from fixed ranges (see ``SAMPLING`` and the report):
+the false-acceptance rates are chance rates for values drawn from those
+ranges, not bounds on a model's errors, which cluster near true or related
+outputs (the near-miss and wrong-session rows are closer to that error model).
 
 Rates are false-acceptance rates with Wilson 95% intervals. These are
 properties of the verifier on synthetic answers, not of any model. Writes
@@ -48,7 +58,7 @@ except ImportError:  # allow running from a checkout without installation
 
 import numpy as np  # noqa: E402
 
-from marketdata_agent import Copilot, FrameBarSource  # noqa: E402
+from marketdata_agent import Copilot, FrameBarSource, ToolRuntime  # noqa: E402
 from marketdata_agent.bench import DEFAULT_SEED, generate_suite, ungrounded_mode  # noqa: E402
 from marketdata_agent.bench.baselines import baseline_backend, near_miss  # noqa: E402
 from marketdata_agent.bench.generator import dataset_frame  # noqa: E402
@@ -60,6 +70,14 @@ SAMPLES = 20
 DECIMALS = {"percent": (0, 1, 2), "usd": (0, 1, 2), "ratio": (1, 2, 3), "count": (0,)}
 DISPLAY_STEP = {"percent": 1e-4, "usd": 1e-2, "ratio": 1e-3, "count": 1.0}
 SEED = 20260925
+SAMPLING = {
+    "annualized_volatility": "uniform(12%, 45%)",
+    "max_drawdown": "-uniform(4%, 30%)",
+    "correlation": "uniform(-0.3, 0.8)",
+    "last_close, reference_close": "uniform($20, $300)",
+    "count": "integer from 7 to 14",
+    "simple_return (and other keys)": "normal(mean 2%, sd 8%)",
+}
 
 
 def _rng(*parts: object) -> np.random.Generator:
@@ -141,9 +159,9 @@ def oracle_injections(suite: Any) -> dict[str, Any]:
                     truth_rid, truth = rid, results[rid].provenance.outputs[key]
         rng = _rng(SEED, task.id)
 
-        def record(mode: str, unit: str, decimals: int, text: str, rid: str | None) -> None:
+        def record(mode: str, unit: str, decimals: int, text: str, rid: str | None, pool: Any = None) -> None:
             cite = f" [r:{rid}]" if rid else ""
-            report = verify_grounding(f"ANSWER: {text}{cite}", results, question=task.question)
+            report = verify_grounding(f"ANSWER: {text}{cite}", pool or results, question=task.question)
             accepted = int(any(check.supported for check in report.checks))
             cell = by_cell[(mode, unit, decimals)]
             cell[0] += accepted
@@ -176,6 +194,24 @@ def oracle_injections(suite: Any) -> dict[str, Any]:
             high = float((payload.get("summary") or {}).get("max_high", truth))
             if abs(high - truth) >= 0.005:
                 record("wrong_field", "usd", 2, _show(high, "usd", 2), truth_rid)
+            args = dict(results[truth_rid].provenance.args)
+            if args.get("start") == args.get("end"):  # the question names one date: inject closes of other sessions
+                day = str(args["start"])
+                runtime = ToolRuntime.for_source(source, task.as_of)
+                earlier = (np.datetime64(day) - np.timedelta64(30, "D")).astype(str)
+                ranges = (
+                    ("range_last_close", "last_close", "last_date", {"start": day, "end": "latest"}),
+                    ("range_first_close", "first_close", "first_date", {"start": earlier, "end": day}),
+                )
+                for mode, key, date_key, bounds in ranges:
+                    extra = runtime.call_tool("get_daily_bars", {"symbol": args["symbol"], **bounds}).result
+                    if extra is None or extra.payload[date_key] == day:
+                        continue
+                    value = float(extra.payload["summary"][key])
+                    if abs(value - truth) >= 0.005:
+                        pool = {**results, extra.result_id: extra}
+                        record(mode, "usd", 2, _show(value, "usd", 2), extra.result_id, pool)
+                        record(mode + "_uncited", "usd", 2, _show(value, "usd", 2), None, pool)
     cells = [
         {"mode": mode, "unit": unit, "decimals": decimals, **rate(accepted, total)}
         for (mode, unit, decimals), (accepted, total) in sorted(by_cell.items())
@@ -184,7 +220,13 @@ def oracle_injections(suite: Any) -> dict[str, Any]:
         {"mode": mode, "outputs_in_episode": bucket, **rate(accepted, total)}
         for (mode, bucket), (accepted, total) in sorted(by_outputs.items())
     ]
-    return {"episodes_with_results": episodes, "samples_per_episode": SAMPLES, "cells": cells, "by_outputs": outputs}
+    return {
+        "episodes_with_results": episodes,
+        "samples_per_episode": SAMPLES,
+        "sampling": SAMPLING,
+        "cells": cells,
+        "by_outputs": outputs,
+    }
 
 
 def _pct(entry: dict[str, Any]) -> str:
@@ -221,6 +263,18 @@ def render(result: dict[str, Any]) -> str:
     ]
     for cell in inj["cells"]:
         lines.append(f"| `{cell['mode']}` | {cell['unit']} | {cell['decimals']} | {cell['k']}/{cell['n']} | {_pct(cell)} |")
+    lines += [
+        "",
+        "Random values (`random_uncited`, `random_cited`) are drawn from these ranges, so their false-acceptance "
+        "rates are chance rates for such draws, not bounds on how often a model's wrong numbers are accepted: a "
+        "model's errors cluster near true or related outputs, which the `near_miss`, `sign_flip`, `wrong_row`, "
+        "`wrong_field` and `range_*` rows probe instead.",
+        "",
+        "| Quantity asked about | Random value drawn from |",
+        "|---|---|",
+    ]
+    for key, text in inj["sampling"].items():
+        lines.append(f"| `{key}` | {text} |")
     lines += [
         "",
         "## Uncited random claims by number of numeric outputs in the episode",

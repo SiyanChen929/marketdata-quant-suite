@@ -7,9 +7,9 @@
   },
   "audit": {
     "error": null,
-    "head_hash": "294641eb83ab40583346e125238c85e4b318ac08e5d158c4473fda3d4e080837",
+    "head_hash": "285b745160c1097ff3f193c038b91ffadd838880e075e97456872b91888784d2",
     "ok": true,
-    "records": 1455,
+    "records": 1458,
     "timestamps": "fixed"
   },
   "banner": "harness-validation baselines on synthetic data; LLM agent results pending (requires ANTHROPIC_API_KEY)",
@@ -22,7 +22,7 @@
     "pandas": "2.3.3",
     "python": "3.11.15"
   },
-  "episodes_sha256": "d0b0843946457aca0bd1172caf9ab1d0b34f74b27e65d5e722146d814dacafde",
+  "episodes_sha256": "0214f31259055179f76c4ffeb3d64a38175d11a0173c75632f608e7ae44540f7",
   "failure": null,
   "fallback_enabled": false,
   "invalid_reasons": [],
@@ -212,6 +212,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.40069754605192803,
@@ -410,6 +419,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.19230498083676134,
@@ -608,6 +626,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.24467602609811764,
@@ -625,7 +652,9 @@
         "unparsed_claims": 0
       },
       "pit_trap": {
-        "abstain_violations": {},
+        "abstain_violations": {
+          "unsupported_value": 6
+        },
         "abstention": {
           "ci95": [
             0.0,
@@ -655,12 +684,12 @@
         },
         "cited_grounding_rate": {
           "ci95": [
-            0.9258998703338824,
-            1.0
+            0.6121562719049204,
+            0.8507936632620209
           ],
-          "k": 48,
+          "k": 36,
           "n": 48,
-          "rate": 1.0
+          "rate": 0.75
         },
         "claims_per_episode": 2.0,
         "clusters": 16,
@@ -703,22 +732,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            0.8620237953250198,
-            1.0
+            0.55100555994846,
+            0.8800063377140499
           ],
-          "k": 24,
+          "k": 18,
           "n": 24,
-          "rate": 1.0
+          "rate": 0.75
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            0.9258998703338824,
-            1.0
+            0.6121562719049204,
+            0.8507936632620209
           ],
-          "k": 48,
+          "k": 36,
           "n": 48,
-          "rate": 1.0
+          "rate": 0.75
         },
         "hindsight_match": {
           "ci95": [
@@ -808,6 +837,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.8620237953250198,
@@ -863,7 +901,7 @@
           "rate": 1.0
         },
         "claims_per_episode": 1.0,
-        "clusters": 11,
+        "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
             0.7575059933447592,
@@ -1008,6 +1046,15 @@
           "rate": 1.0
         },
         "proposals": 12,
+        "refusal_without_claim_check": {
+          "ci95": [
+            0.0,
+            0.24249400665524085
+          ],
+          "k": 0,
+          "n": 12,
+          "rate": 0.0
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.7575059933447592,
@@ -1066,12 +1113,12 @@
         "clusters": 11,
         "denied_call_episodes": {
           "ci95": [
-            0.39062208887279953,
-            0.8618799089087867
+            0.46769466506643426,
+            0.9110583316059453
           ],
-          "k": 8,
+          "k": 9,
           "n": 12,
-          "rate": 0.6666666666666666
+          "rate": 0.75
         },
         "distinct_items": 12,
         "execution_claim_episodes": {
@@ -1123,19 +1170,19 @@
         "hindsight_match": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "hindsight_match_numeric": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "incorrect_by_parse_method": {},
@@ -1152,12 +1199,12 @@
         },
         "lookahead_attempt_episodes": {
           "ci95": [
-            0.39062208887279953,
-            0.8618799089087867
+            0.46769466506643426,
+            0.9110583316059453
           ],
-          "k": 8,
+          "k": 9,
           "n": 12,
-          "rate": 0.6666666666666666
+          "rate": 0.75
         },
         "lookahead_attempt_episodes_answerable": {
           "ci95": [
@@ -1168,9 +1215,9 @@
           "n": 0,
           "rate": null
         },
-        "lookahead_attempts": 8,
-        "mean_steps": 2.6666666666666665,
-        "mean_tool_calls": 1.6666666666666667,
+        "lookahead_attempts": 9,
+        "mean_steps": 2.75,
+        "mean_tool_calls": 1.75,
         "median_episode_latency_seconds": null,
         "n": 12,
         "order_execution_attempt_episodes": {
@@ -1206,14 +1253,23 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
-            0.39062208887279953,
-            0.8618799089087867
+            0.46769466506643426,
+            0.9110583316059453
           ],
-          "k": 8,
+          "k": 9,
           "n": 12,
-          "rate": 0.6666666666666666
+          "rate": 0.75
         },
         "served_model_mismatch_episodes": 0,
         "status": {
@@ -1406,6 +1462,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.43749467295945105,
@@ -1604,6 +1669,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.2030524657216362,
@@ -1802,6 +1876,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.24559518127005633,
@@ -2000,6 +2083,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.33716415642042774,
@@ -2198,6 +2290,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2396,6 +2497,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.7224672001371107,
@@ -2594,6 +2704,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2792,6 +2911,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.21521606221387757,
@@ -2990,6 +3118,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.071479212752109,
@@ -3188,6 +3325,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.21521606221387757,
@@ -3205,7 +3351,9 @@
         "unparsed_claims": 0
       },
       "pit_trap/future_close": {
-        "abstain_violations": {},
+        "abstain_violations": {
+          "unsupported_value": 6
+        },
         "abstention": {
           "ci95": [
             0.0,
@@ -3235,12 +3383,12 @@
         },
         "cited_grounding_rate": {
           "ci95": [
-            0.7575059933447592,
-            1.0
+            0.0,
+            0.24249400665524085
           ],
-          "k": 12,
+          "k": 0,
           "n": 12,
-          "rate": 1.0
+          "rate": 0.0
         },
         "claims_per_episode": 2.0,
         "clusters": 3,
@@ -3283,22 +3431,22 @@
         },
         "fully_grounded_episodes": {
           "ci95": [
-            0.6096657120978346,
-            1.0
+            0.0,
+            0.3903342879021653
           ],
-          "k": 6,
+          "k": 0,
           "n": 6,
-          "rate": 1.0
+          "rate": 0.0
         },
         "grounding_errors": 0,
         "grounding_rate": {
           "ci95": [
-            0.7575059933447592,
-            1.0
+            0.0,
+            0.24249400665524085
           ],
-          "k": 12,
+          "k": 0,
           "n": 12,
-          "rate": 1.0
+          "rate": 0.0
         },
         "hindsight_match": {
           "ci95": [
@@ -3388,6 +3536,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.6096657120978346,
@@ -3588,6 +3745,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.6096657120978346,
@@ -3788,6 +3954,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.6096657120978346,
@@ -3988,6 +4163,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.6096657120978346,
@@ -4043,7 +4227,7 @@
           "rate": 1.0
         },
         "claims_per_episode": 1.0,
-        "clusters": 11,
+        "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
             0.7575059933447592,
@@ -4188,6 +4372,15 @@
           "rate": 1.0
         },
         "proposals": 12,
+        "refusal_without_claim_check": {
+          "ci95": [
+            0.0,
+            0.24249400665524085
+          ],
+          "k": 0,
+          "n": 12,
+          "rate": 0.0
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.7575059933447592,
@@ -4246,12 +4439,12 @@
         "clusters": 4,
         "denied_call_episodes": {
           "ci95": [
-            0.15003898915214947,
-            0.8499610108478506
+            0.5101091635454027,
+            1.0
           ],
-          "k": 2,
+          "k": 4,
           "n": 4,
-          "rate": 0.5
+          "rate": 1.0
         },
         "distinct_items": 4,
         "execution_claim_episodes": {
@@ -4332,12 +4525,12 @@
         },
         "lookahead_attempt_episodes": {
           "ci95": [
-            0.15003898915214947,
-            0.8499610108478506
+            0.5101091635454027,
+            1.0
           ],
-          "k": 2,
+          "k": 4,
           "n": 4,
-          "rate": 0.5
+          "rate": 1.0
         },
         "lookahead_attempt_episodes_answerable": {
           "ci95": [
@@ -4348,9 +4541,9 @@
           "n": 0,
           "rate": null
         },
-        "lookahead_attempts": 2,
-        "mean_steps": 2.5,
-        "mean_tool_calls": 1.5,
+        "lookahead_attempts": 4,
+        "mean_steps": 3.0,
+        "mean_tool_calls": 2.0,
         "median_episode_latency_seconds": null,
         "n": 4,
         "order_execution_attempt_episodes": {
@@ -4386,14 +4579,23 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
-            0.15003898915214947,
-            0.8499610108478506
+            0.5101091635454027,
+            1.0
           ],
-          "k": 2,
+          "k": 4,
           "n": 4,
-          "rate": 0.5
+          "rate": 1.0
         },
         "served_model_mismatch_episodes": 0,
         "status": {
@@ -4584,6 +4786,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.30064184258240184,
@@ -4642,12 +4853,12 @@
         "clusters": 3,
         "denied_call_episodes": {
           "ci95": [
-            0.30064184258240184,
-            0.9544127391902995
+            0.15003898915214947,
+            0.8499610108478506
           ],
-          "k": 3,
+          "k": 2,
           "n": 4,
-          "rate": 0.75
+          "rate": 0.5
         },
         "distinct_items": 4,
         "execution_claim_episodes": {
@@ -4699,19 +4910,19 @@
         "hindsight_match": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "hindsight_match_numeric": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "incorrect_by_parse_method": {},
@@ -4728,12 +4939,12 @@
         },
         "lookahead_attempt_episodes": {
           "ci95": [
-            0.30064184258240184,
-            0.9544127391902995
+            0.15003898915214947,
+            0.8499610108478506
           ],
-          "k": 3,
+          "k": 2,
           "n": 4,
-          "rate": 0.75
+          "rate": 0.5
         },
         "lookahead_attempt_episodes_answerable": {
           "ci95": [
@@ -4744,9 +4955,9 @@
           "n": 0,
           "rate": null
         },
-        "lookahead_attempts": 3,
-        "mean_steps": 2.75,
-        "mean_tool_calls": 1.75,
+        "lookahead_attempts": 2,
+        "mean_steps": 2.5,
+        "mean_tool_calls": 1.5,
         "median_episode_latency_seconds": null,
         "n": 4,
         "order_execution_attempt_episodes": {
@@ -4782,14 +4993,23 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
-            0.30064184258240184,
-            0.9544127391902995
+            0.15003898915214947,
+            0.8499610108478506
           ],
-          "k": 3,
+          "k": 2,
           "n": 4,
-          "rate": 0.75
+          "rate": 0.5
         },
         "served_model_mismatch_episodes": 0,
         "status": {
@@ -4800,7 +5020,9 @@
       }
     },
     "overall": {
-      "abstain_violations": {},
+      "abstain_violations": {
+        "unsupported_value": 6
+      },
       "abstention": {
         "ci95": [
           0.039888088102043855,
@@ -4830,23 +5052,23 @@
       },
       "cited_grounding_rate": {
         "ci95": [
-          0.9895282860529357,
-          1.0
+          0.9431147329475809,
+          0.9809901953497888
         ],
-        "k": 363,
+        "k": 351,
         "n": 363,
-        "rate": 1.0
+        "rate": 0.9669421487603306
       },
       "claims_per_episode": 2.086206896551724,
-      "clusters": 123,
+      "clusters": 124,
       "denied_call_episodes": {
         "ci95": [
-          0.5061731895200408,
-          0.6512704132578164
+          0.5119358243859491,
+          0.6567537500188978
         ],
-        "k": 101,
+        "k": 102,
         "n": 174,
-        "rate": 0.5804597701149425
+        "rate": 0.5862068965517241
       },
       "distinct_items": 174,
       "execution_claim_episodes": {
@@ -4878,39 +5100,39 @@
       },
       "fully_grounded_episodes": {
         "ci95": [
-          0.9768365591570956,
-          1.0
+          0.9215612866577387,
+          0.9829170088580903
         ],
-        "k": 162,
+        "k": 156,
         "n": 162,
-        "rate": 1.0
+        "rate": 0.9629629629629629
       },
       "grounding_errors": 0,
       "grounding_rate": {
         "ci95": [
-          0.9895282860529357,
-          1.0
+          0.9431147329475809,
+          0.9809901953497888
         ],
-        "k": 363,
+        "k": 351,
         "n": 363,
-        "rate": 1.0
+        "rate": 0.9669421487603306
       },
       "hindsight_match": {
         "ci95": [
           0.0,
-          0.04323948381405149
+          0.04373172841465989
         ],
         "k": 0,
-        "n": 85,
+        "n": 84,
         "rate": 0.0
       },
       "hindsight_match_numeric": {
         "ci95": [
           0.0,
-          0.05202306241026692
+          0.05273725818905173
         ],
         "k": 0,
-        "n": 70,
+        "n": 69,
         "rate": 0.0
       },
       "incorrect_by_parse_method": {
@@ -4929,12 +5151,12 @@
       },
       "lookahead_attempt_episodes": {
         "ci95": [
-          0.43777948301403447,
-          0.5847124602399452
+          0.443426226389009,
+          0.5903116884919605
         ],
-        "k": 89,
+        "k": 90,
         "n": 174,
-        "rate": 0.5114942528735632
+        "rate": 0.5172413793103449
       },
       "lookahead_attempt_episodes_answerable": {
         "ci95": [
@@ -4945,9 +5167,9 @@
         "n": 126,
         "rate": 0.4523809523809524
       },
-      "lookahead_attempts": 105,
-      "mean_steps": 2.5804597701149423,
-      "mean_tool_calls": 1.8563218390804597,
+      "lookahead_attempts": 106,
+      "mean_steps": 2.586206896551724,
+      "mean_tool_calls": 1.8620689655172413,
       "median_episode_latency_seconds": null,
       "n": 174,
       "order_execution_attempt_episodes": {
@@ -4983,14 +5205,23 @@
         "rate": 0.06896551724137931
       },
       "proposals": 12,
+      "refusal_without_claim_check": {
+        "ci95": [
+          0.0,
+          0.24249400665524085
+        ],
+        "k": 0,
+        "n": 12,
+        "rate": 0.0
+      },
       "safety_denial_episodes": {
         "ci95": [
-          0.5061731895200408,
-          0.6512704132578164
+          0.5119358243859491,
+          0.6567537500188978
         ],
-        "k": 101,
+        "k": 102,
         "n": 174,
-        "rate": 0.5804597701149425
+        "rate": 0.5862068965517241
       },
       "served_model_mismatch_episodes": 0,
       "status": {
@@ -5010,6 +5241,7 @@
     "max_steps": 0,
     "refusal": 0
   },
+  "stopped": null,
   "suite": {
     "counts": {
       "compute": 72,
@@ -5044,10 +5276,10 @@
       ]
     },
     "distinct_items": 174,
-    "generator_version": "marketdata-agent/bench-generator/v2",
+    "generator_version": "marketdata-agent/bench-generator/v3",
     "n_tasks": 174,
     "seed": 20240917,
-    "sha256": "57cd5cb0e19e9ab021e7abc577a5acc240cdb93e6df6b81aeaf6fce5e483ee24"
+    "sha256": "004b9610ce4e0edfe9ecfc7d8c209aa613732b46624f26075cae0ed020e6f005"
   },
   "superseded": null,
   "tasks_scored": 174,

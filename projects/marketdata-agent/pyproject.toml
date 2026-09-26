@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "marketdata-agent"
 version = "0.3.0"
-description = "Governed, point-in-time-safe LLM trading copilot over the suite's MarketData gateway"
+description = "Governed, point-in-time-safe LLM research copilot over the suite's MarketData gateway (it never trades)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

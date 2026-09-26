@@ -47,10 +47,12 @@ information dated after the analysis date (look-ahead), reporting numbers that
 no computation produced, and acting on a request to trade. We describe a
 governed copilot in which each of these is observable by construction. An
 as-of clock refuses, rather than clamps, requests for later dates; a policy
-gate cannot be configured to allow order execution and counts every attempt;
-eight strict-schema tools return results with content-addressed provenance
-identifiers; a rounding-aware verifier checks every numeric claim, including
-its sign and, for daily bars, its date and field, against the tool outputs it
+gate cannot be configured to allow order execution and counts execution and
+look-ahead attempts, including calls to invented order tools and later dates
+written in other formats; eight strict-schema tools return results with
+content-addressed provenance identifiers; a rounding-aware verifier checks
+every numeric claim, including its sign and, for daily bars and
+single-session closes, its date and field, against the tool outputs it
 cites; and a hash-chained audit log is anchored in the committed run summary.
 We pair the system with a deterministic benchmark of \SuiteTasks{} distinct
 tasks over a synthetic daily panel, with cutoff traps worded like answerable
@@ -59,7 +61,8 @@ not-yet-listed symbols. Ground truth comes from an independent reference
 implementation, and hindsight values identify answers built from future data.
 Scripted baselines check the instruments. They are not language models, and
 several of their results hold by construction. A reference plan scores
-\resOracleAccK/\resOracleAccN, also with the clock disabled. A policy built to
+\resOracleAccK/\resOracleAccN, and \resOracleNoClockAccK/\resOracleNoClockAccN{}
+with the clock disabled. A policy built to
 ignore the cutoff names a later date in \resLookaheadNaiveLookaheadEpK{} of
 \SuiteTasks{} episodes, and every such read is refused and counted; with the
 clock disabled the same reads succeed, and \resNoGuardHindsightNumericK{} of

@@ -7,7 +7,7 @@
   },
   "audit": {
     "error": null,
-    "head_hash": "7d0206c4c2115aae4ded196a2b7525eb527da2df7fe65ed1766f63fc4f96b471",
+    "head_hash": "58270f1156086060ea92f4c0460262f4170015b3d7d1ac6465ef3c80446cec7a",
     "ok": true,
     "records": 1048,
     "timestamps": "fixed"
@@ -22,7 +22,7 @@
     "pandas": "2.3.3",
     "python": "3.11.15"
   },
-  "episodes_sha256": "e4596b3ec6805596834e15ba765f9faa5e269516dc017a3d7a407ae9f3782214",
+  "episodes_sha256": "69cd1376a2ffd71ff86585cb72a7d0a823da56c16bcbf478d0eeaa4dc8a1feb1",
   "failure": null,
   "fallback_enabled": false,
   "invalid_reasons": [],
@@ -214,6 +214,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -414,6 +423,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -614,6 +632,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -816,6 +843,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -871,7 +907,7 @@
           "rate": 0.0
         },
         "claims_per_episode": 1.0,
-        "clusters": 11,
+        "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
             0.0,
@@ -1016,6 +1052,15 @@
           "rate": 1.0
         },
         "proposals": 12,
+        "refusal_without_claim_check": {
+          "ci95": [
+            0.0,
+            0.24249400665524085
+          ],
+          "k": 0,
+          "n": 12,
+          "rate": 0.0
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -1133,19 +1178,19 @@
         "hindsight_match": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "hindsight_match_numeric": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "incorrect_by_parse_method": {
@@ -1218,6 +1263,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -1420,6 +1474,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -1620,6 +1683,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -1820,6 +1892,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2020,6 +2101,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2220,6 +2310,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2420,6 +2519,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2620,6 +2728,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -2820,6 +2937,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -3020,6 +3146,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -3220,6 +3355,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -3422,6 +3566,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -3624,6 +3777,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -3826,6 +3988,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4028,6 +4199,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4083,7 +4263,7 @@
           "rate": 0.0
         },
         "claims_per_episode": 1.0,
-        "clusters": 11,
+        "clusters": 12,
         "denied_call_episodes": {
           "ci95": [
             0.0,
@@ -4228,6 +4408,15 @@
           "rate": 1.0
         },
         "proposals": 12,
+        "refusal_without_claim_check": {
+          "ci95": [
+            0.0,
+            0.24249400665524085
+          ],
+          "k": 0,
+          "n": 12,
+          "rate": 0.0
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4430,6 +4619,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4632,6 +4830,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4749,19 +4956,19 @@
         "hindsight_match": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "hindsight_match_numeric": {
           "ci95": [
             0.0,
-            0.5614970317550454
+            0.6576197724933469
           ],
           "k": 0,
-          "n": 3,
+          "n": 2,
           "rate": 0.0
         },
         "incorrect_by_parse_method": {
@@ -4834,6 +5041,15 @@
           "rate": 0.0
         },
         "proposals": 0,
+        "refusal_without_claim_check": {
+          "ci95": [
+            null,
+            null
+          ],
+          "k": 0,
+          "n": 0,
+          "rate": null
+        },
         "safety_denial_episodes": {
           "ci95": [
             0.0,
@@ -4892,7 +5108,7 @@
         "rate": 0.0
       },
       "claims_per_episode": 1.793103448275862,
-      "clusters": 123,
+      "clusters": 124,
       "denied_call_episodes": {
         "ci95": [
           0.0,
@@ -4951,20 +5167,20 @@
       },
       "hindsight_match": {
         "ci95": [
-          0.012075041854642109,
-          0.09870047839606455
+          0.012219669231335377,
+          0.0998169357251345
         ],
         "k": 3,
-        "n": 85,
-        "rate": 0.03529411764705882
+        "n": 84,
+        "rate": 0.03571428571428571
       },
       "hindsight_match_numeric": {
         "ci95": [
           0.0,
-          0.05202306241026692
+          0.05273725818905173
         ],
         "k": 0,
-        "n": 70,
+        "n": 69,
         "rate": 0.0
       },
       "incorrect_by_parse_method": {
@@ -5037,6 +5253,15 @@
         "rate": 0.06896551724137931
       },
       "proposals": 12,
+      "refusal_without_claim_check": {
+        "ci95": [
+          0.0,
+          0.24249400665524085
+        ],
+        "k": 0,
+        "n": 12,
+        "rate": 0.0
+      },
       "safety_denial_episodes": {
         "ci95": [
           0.0,
@@ -5064,6 +5289,7 @@
     "max_steps": 0,
     "refusal": 0
   },
+  "stopped": null,
   "suite": {
     "counts": {
       "compute": 72,
@@ -5098,10 +5324,10 @@
       ]
     },
     "distinct_items": 174,
-    "generator_version": "marketdata-agent/bench-generator/v2",
+    "generator_version": "marketdata-agent/bench-generator/v3",
     "n_tasks": 174,
     "seed": 20240917,
-    "sha256": "57cd5cb0e19e9ab021e7abc577a5acc240cdb93e6df6b81aeaf6fce5e483ee24"
+    "sha256": "004b9610ce4e0edfe9ecfc7d8c209aa613732b46624f26075cae0ed020e6f005"
   },
   "superseded": null,
   "tasks_scored": 174,

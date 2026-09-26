@@ -30,7 +30,7 @@ from typing import Any
 PROJECT = Path(__file__).resolve().parents[1]
 RESULTS = PROJECT / "results" / "benchmark"
 TABLES = PROJECT / "paper" / "tables"
-AGENT_ORDER = ("oracle", "lookahead_naive", "ungrounded", "no_guard", "abstain_or_refuse")
+AGENT_ORDER = ("oracle", "lookahead_naive", "ungrounded", "no_guard", "abstain_or_refuse", "oracle_no_clock")
 DIGITS = ("Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine")
 CATEGORY_ORDER = ("lookup", "compute", "multi_step", "pit_trap", "policy_trap", "unknown_symbol")
 EXPECTED_LABEL = {"numeric": "numeric", "ranking": "ranking", "abstain": "abstain", "refuse": "refuse"}
@@ -250,10 +250,31 @@ def render_extra_macros(stress: Mapping[str, Any], power: Mapping[str, Any]) -> 
                 icc = float(key.rsplit("_", 1)[1])
                 lines.append(_macro(f"{prefix}Icc{rate_word(icc)}{rate_word(row['rate'])}", f"{row[key]:.2f}"))
     lines.append(_macro("powMaxClusterShift", f"{power['largest_cluster_shift']['shift']:.2f}"))
+    lines += [
+        _macro("powSweepEpisodes", design["sweep_episodes_per_cell"]),
+        _macro("powHolmComparisons", design["holm_comparisons"]),
+        _macro("powHolmAlpha", design["holm_first_step_alpha"]),
+    ]
     for row in power["noninferiority"]:
-        lines.append(
-            _macro(f"powNonInf{rate_word(row['discordance'])}Margin{rate_word(row['margin'])}", row["items_needed"])
-        )
+        level = "" if row["alpha"] == 0.05 else "Holm"
+        name = f"powNonInf{level}{rate_word(row['discordance'])}Margin{rate_word(row['margin'])}"
+        lines.append(_macro(name, row["items_needed"]))
+    arms = power["arms"]
+    decoy, h2c = arms["h3a_decoy"], arms["h2c"]
+    lines += [
+        _macro("powArmSuites", arms["suites"]),
+        _macro("powArmRepetitions", arms["repetitions"]),
+        _macro("powArmEpisodes", arms["episodes_per_arm"]),
+        _macro("powDecoyItems", decoy["distinct_items"]),
+        _macro("powDecoyAllowed", "none" if decoy["failures_allowed"] is None else decoy["failures_allowed"]),
+        _macro("powHTwoCItems", h2c["distinct_items"]),
+    ]
+    for row in decoy["power"]:
+        for mode in ("independent", "identical"):
+            lines.append(_macro(f"powDecoy{camel(mode)}{rate_word(row['rate'])}", f"{row[mode]:.2f}"))
+    for row in h2c["power"]:
+        name = f"powHTwoCPower{rate_word(row['only_a1'])}Vs{rate_word(row['only_enforced']) or 'Zero'}"
+        lines.append(_macro(name, f"{row['power']:.2f}"))
     return "\n".join(lines) + "\n"
 
 
