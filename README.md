@@ -14,7 +14,7 @@ The two research lines study one problem, trustworthy AI for quantitative resear
 [`projects/llm-factor-mining`](projects/llm-factor-mining) · status: **manuscript in preparation**
 
 - **Question.** Does LLM-guided program search find cross-sectional equity factors that survive multiple-testing control over every trial, and a single sealed out-of-sample test, more often than random grammar search and genetic programming at the same trial budget? How much of any edge is rediscovery or memorization rather than search?
-- **Method.** A typed factor language that cannot look ahead; a hash-chained ledger that counts every proposal as a trial; a formation screen followed by confirmation on a validation window no proposer sees; a commit-then-reveal test hold-out; a planted-alpha benchmark with null markets; value-based novelty against a library of classic factors.
+- **Method.** A typed factor language that cannot look ahead; a hash-chained ledger that logs every proposal and counts every non-duplicate one (valid, invalid, failed or degenerate) as a trial; a formation screen followed by confirmation on a validation window no proposer sees; a commit-then-reveal test hold-out; a planted-alpha benchmark with null markets; value-based novelty against a library of classic factors.
 - **Today.** The harness and two baselines (random grammar, genetic programming) are implemented, tested and validated on synthetic data. LLM and real-market experiments are pending.
 - [Research plan](projects/llm-factor-mining/docs/research-plan.md) · [result card](projects/llm-factor-mining/docs/result-card.md) · [paper draft](projects/llm-factor-mining/paper/)
 
@@ -24,30 +24,33 @@ The two research lines study one problem, trustworthy AI for quantitative resear
 
 - **Question.** Can a tool-using LLM copilot answer quantitative market questions with verifiable numeric grounding while respecting point-in-time and execution constraints, and how should that be measured?
 - **Method.** An as-of clock that refuses later dates instead of clamping them; a policy gate that cannot enable order execution; strict tools with content-addressed provenance; a rounding-aware grounding verifier; a hash-chained audit log; a 174-task benchmark with cutoff traps and trade-request traps, scored against an independent reference.
-- **Today.** The harness is implemented and tested, and five scripted baselines validate its instruments on synthetic data. No language model has been evaluated yet.
+- **Today.** The harness is implemented and tested, and six scripted baselines validate its instruments on synthetic data. No language model has been evaluated yet.
 - [Research plan](projects/marketdata-agent/docs/research-plan.md) · [safety model](projects/marketdata-agent/docs/safety-model.md) · [evaluation protocol](projects/marketdata-agent/docs/evaluation-protocol.md) · [paper draft](projects/marketdata-agent/paper/)
 
 Neither manuscript has been submitted. Venues named in the research plans are targets.
 
 ## Evidence and reproducibility
 
-Results move up an evidence ladder one rung at a time ([research governance](projects/quant-research-platform/docs/research-governance.md)). The table shows where each research line stands today.
+Results move up the platform's evidence ladder one level at a time, without skipping a level ([research governance](projects/quant-research-platform/docs/research-governance.md)). The table places each research line on those levels today.
 
-| Evidence | What it can establish | llm-factor-mining | marketdata-agent |
+| Level | What it can establish | llm-factor-mining | marketdata-agent |
 |---|---|---|---|
-| Offline tests, run in CI | The software behaves as specified: no look-ahead, every trial counted, gates refuse, tampering is detected | yes | yes |
-| Synthetic harness validation | The instruments detect what they are built to detect, against known ground truth | committed, deterministic | committed, byte-reproducible |
-| LLM experiments | How a model behaves inside the protocol | pending (needs an API key) | pending (needs an API key) |
-| Real-market experiments on confirmed MarketData bars | Anything about real markets | pending | pending |
+| 1. Tests, run offline in CI | The software behaves as specified: no look-ahead, every trial counted, gates refuse, tampering is detected | yes | yes |
+| 2. Synthetic data | End-to-end plumbing only: the pipeline runs, and its instruments register planted behaviour with known ground truth. Nothing about real markets | baselines committed, deterministic; LLM arm pending (needs an API key) | scripted baselines committed, byte-reproducible; LLM runs pending (needs an API key) |
+| 3–4. Real data: formation and validation, then an untouched test window | Anything about real markets | pending | pending (real-data replication) |
 
-Rules for every number in this repository:
+Levels 5 and 6 (paper trading, capital) do not apply: neither research line has an order path.
+
+Rules for every number reported by the two research lines:
 
 - It is produced by a committed script from committed inputs, and synthetic results carry a banner saying so.
 - Paper tables are generated from the committed results, and tests fail when a table, or a copy in a README, drifts from them.
 - Every LLM backend is tested offline with injected fake clients. No model output appears in the committed evidence.
 - Null and negative results stay visible.
 
-**Excerpts of the synthetic harness validation.** They are copied verbatim from the committed result files, and `tests/test_suite_contract.py` fails if they drift.
+Elsewhere in the suite, the [equity-pairs case study](projects/equity-pairs-research/README.md#private-study-provenance-and-decision) reports figures from a private research run whose inputs are excluded. They are a disclosure and cannot be reproduced or verified from this repository.
+
+**Excerpts of the synthetic harness validation.** They are copied verbatim from the committed result files, and `tests/test_suite_contract.py` fails if a line is edited, dropped or reordered.
 
 Factor mining on null markets, where nothing is planted ([full summary](projects/llm-factor-mining/results/synthetic_benchmark/summary.md)):
 
@@ -61,7 +64,7 @@ Factor mining on null markets, where nothing is planted ([full summary](projects
 
 <!-- /verbatim -->
 
-Neither arm selected a factor on any null market. The formation screen alone let candidates through for genetic programming, whose feedback-driven proposals make formation p-values invalid for false-discovery control; the confirmation step on unseen validation data removed them all. Planted-market recovery, oracle power and per-run ledger heads are in the full summary.
+Neither arm selected a factor on any null market. The formation screen alone let candidates through for genetic programming, whose feedback-driven proposals make formation p-values invalid for false-discovery control; the confirmation step on unseen validation data removed them all. Ten null seeds check the harness; they are too few for a statistical claim. Planted-market recovery, oracle power and per-run ledger heads are in the full summary.
 
 Copilot harness, scripted baselines ([full summary](projects/marketdata-agent/results/benchmark/summary.md)):
 
@@ -71,19 +74,20 @@ Copilot harness, scripted baselines ([full summary](projects/marketdata-agent/re
 | Agent | Tasks | Accuracy [95% CI] | Grounding (claims) | Citation | Look-ahead attempt episodes | Leak episodes | Denied-call episodes | Tool calls / task |
 |---|---|---|---|---|---|---|---|---|
 | `oracle` | 174 | 100.0% [97.8, 100.0] | 100.0% | 100.0% | 0.0% | 0.0% | 0.0% | 1.05 |
-| `lookahead_naive` | 174 | 79.3% [72.7, 84.7] | 100.0% | 100.0% | 51.1% | 0.0% | 58.0% | 1.86 |
+| `lookahead_naive` | 174 | 79.3% [72.7, 84.7] | 96.7% | 100.0% | 51.7% | 0.0% | 58.6% | 1.86 |
 | `ungrounded` | 174 | 10.9% [7.1, 16.4] | 0.0% | 71.8% | 0.0% | 0.0% | 0.0% | 1.05 |
-| `no_guard` | 174 | 47.7% [40.4, 55.1] | 100.0% | 100.0% | 51.1% | 48.3% | 6.9% | 1.25 |
+| `no_guard` | 174 | 48.3% [41.0, 55.7] | 100.0% | 100.0% | 52.9% | 47.7% | 6.9% | 1.25 |
 | `abstain_or_refuse` | 174 | 27.6% [21.5, 34.7] | n/a | n/a | 0.0% | 0.0% | 0.0% | 0.00 |
+| `oracle_no_clock` | 174 | 100.0% [97.8, 100.0] | 100.0% | 100.0% | 0.0% | 0.0% | 0.0% | 1.05 |
 
 <!-- /verbatim -->
 
-These agents are scripted policies, not language models. Each row checks that one instrument registers a behaviour the policy was programmed to have. `no_guard` is the same policy with the look-ahead refusal lifted: it reads rows after the cutoff and still looks fully grounded, so grounding alone is not a safety metric.
+These agents are scripted policies, not language models. Each row checks that one instrument registers a behaviour the policy was programmed to have. `no_guard` is the same policy with the look-ahead refusal lifted: it reads rows after the cutoff and still looks fully grounded, so grounding alone is not a safety metric. `oracle_no_clock` is the oracle with the clock disabled, and changes nothing for a policy that never names a later date.
 
 Regenerate the evidence into a scratch directory and compare it with the committed files:
 
 ```bash
-python projects/marketdata-agent/scripts/run_benchmark.py --out /tmp/agent-bench     # about 25 s
+python projects/marketdata-agent/scripts/run_benchmark.py --out /tmp/agent-bench     # about 35 s
 diff -r -x audit projects/marketdata-agent/results/benchmark /tmp/agent-bench      # no output: identical
 python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py \
   --out /tmp/lfm-bench --runs-dir /tmp/lfm-runs                                    # about 6 min
@@ -91,7 +95,7 @@ python projects/llm-factor-mining/scripts/render_paper_tables.py --check
 python projects/marketdata-agent/scripts/render_paper_tables.py --check
 ```
 
-The regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line.
+On the recorded software stack (the summary's `Software:` line; `scripts/bootstrap.sh` pins numpy, pandas and scipy to it through [`configs/constraints.txt`](configs/constraints.txt)), the regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line.
 
 ## System map
 
@@ -136,7 +140,7 @@ The machine-readable suite contract is [`configs/suite.yml`](configs/suite.yml).
 | [`projects/llm-factor-mining`](projects/llm-factor-mining) | Research line 1: LLM-guided factor discovery under multiple-testing control and a sealed hold-out | Reads confirmed daily bars from the shared store; the test window is loaded only after the factor set is frozen |
 | [`projects/marketdata-agent`](projects/marketdata-agent) | Research line 2: governed LLM copilot and benchmark for numeric grounding, look-ahead and action safety | Serves confirmed bars dated on or before the as-of date through read-only tools |
 | [`projects/quant-research-platform`](projects/quant-research-platform) | Flagship research, portfolio, risk, execution, and evidence engine | Reads MarketData through the shared gateway and confirmed lake |
-| [`projects/equity-pairs-research`](projects/equity-pairs-research) | Cost-aware statistical-arbitrage case study with honest negative results | Uses shared confirmed daily bars; optional FRED features remain separate |
+| [`projects/equity-pairs-research`](projects/equity-pairs-research) | Cost-aware statistical-arbitrage case study; its negative results are disclosed from a private run | Uses shared confirmed daily bars; optional FRED features remain separate |
 | [`projects/index-rebalance-event-study`](projects/index-rebalance-event-study) | Event-time and volatility research under point-in-time constraints | Uses shared confirmed daily bars; licensed event inputs remain private |
 
 The selection is deliberate: one data plane, one reusable engine, two case studies and two research lines that share one contract. The reasoning is in [project selection](docs/project-selection.md) and the [system blueprint](docs/system-blueprint.md).
@@ -146,7 +150,7 @@ The selection is deliberate: one data plane, one reusable engine, two case studi
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-./scripts/bootstrap.sh            # editable installs with [dev] extras; no LLM SDK
+./scripts/bootstrap.sh            # editable installs with [dev] extras, pinned numeric stack; no LLM SDK
 
 ./scripts/test-all.sh             # every component, offline, no credentials needed
 python scripts/repository-audit.py
@@ -179,7 +183,7 @@ python scripts/download-bars.py --symbols SPY,AAPL,MSFT \
   --start 2020-01-01 --end 2025-12-31 --finality confirmed
 ```
 
-Live LLM runs need the optional extra and `ANTHROPIC_API_KEY` in the environment, for example `python -m pip install -e "projects/llm-factor-mining[llm]"`. Each project README lists its live commands, which have not yet been run.
+Live LLM runs need the optional extra and `ANTHROPIC_API_KEY` in the environment, for example `python -m pip install -c configs/constraints.txt -e "projects/llm-factor-mining[llm]"`. A separate CI job runs both projects' offline tests with the SDK installed, still without a key. Each project README lists its live commands, which have not yet been run.
 
 Read the [data-source policy](docs/data-source-policy.md) and the [migration and storage plan](docs/migration-and-storage.md) before adding a data source or strategy.
 
@@ -190,7 +194,7 @@ Read the [data-source policy](docs/data-source-policy.md) and the [migration and
 - Signals generated at a close execute no earlier than the next session.
 - Costs, borrow assumptions, turnover, and capacity constraints are explicit.
 - Hyperparameter selection and final evaluation use chronological separation.
-- Every proposal a search method makes is a counted trial. A sealed test window is revealed once per commitment, and reveals are registered so that repeats are countable.
+- Every proposal a search method makes is logged, and every non-duplicate proposal, including invalid ones, is a counted trial. A sealed test window is revealed once per commitment, and reveals are registered so that repeats are countable.
 - An LLM experiment starts only after its research plan is frozen. Every model call records the requested and served model, the stop reason and token usage, and the run can be replayed offline from its recording.
 - Negative findings remain visible; a rejected hypothesis is valid research evidence.
 - Every platform run records `data_provenance.json` with source, finality, date coverage, the canonical price snapshot captured with the read, and exact reference-cache snapshots used by fundamentals/events.
@@ -207,3 +211,5 @@ This repository contains research software and synthetic fixtures. It does not c
 ## Citation
 
 Cite the software with the metadata in [`CITATION.cff`](CITATION.cff); GitHub shows it under "Cite this repository". The two manuscripts are unpublished drafts, so cite them only once a preprint exists.
+
+No open-source license has been chosen yet. Until a `LICENSE` file is added, the code is published for reading and citation only, and reuse needs the author's permission.

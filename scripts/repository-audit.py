@@ -30,16 +30,31 @@ TEXT_SUFFIXES = {
     ".txt",
     ".sh",
     ".example",
+    ".jsonl",
+    ".tex",
+    ".bib",
+    ".cff",
 }
 CODE_SUFFIXES = {".py", ".sh", ".toml", ".yml", ".yaml"}
-SECRET_PATTERNS = {
-    "embedded MarketData token": re.compile(
-        r"MARKETDATA_(?:TOKEN|API_KEY)\s*=\s*(?!replace_me|[\"']?\$|os\.getenv)"
+
+
+def _credential_assignment(name: str) -> re.Pattern[str]:
+    """Match ``NAME=value`` with ``=`` or ``:`` and optional quotes (shell, Python,
+    YAML, JSON), unless the value is a placeholder or a variable reference."""
+
+    return re.compile(
+        rf"{name}[\"']?\s*[:=]\s*[\"']?(?!replace_me|\$|os\.getenv|os\.environ)"
         r"[A-Za-z0-9+/=_-]{20,}"
-    ),
-    "embedded FRED key": re.compile(
-        r"FRED_API_KEY\s*=\s*(?!replace_me|[\"']?\$|os\.getenv)[A-Za-z0-9_-]{20,}"
-    ),
+    )
+
+
+SECRET_PATTERNS = {
+    "embedded MarketData token": _credential_assignment(r"MARKETDATA_(?:TOKEN|API_KEY)"),
+    "embedded FRED key": _credential_assignment(r"FRED_API_KEY"),
+    "embedded Anthropic API key": _credential_assignment(r"ANTHROPIC_API_KEY"),
+    # Issued keys are far longer than 40 characters after the prefix; the short
+    # dummy values used by redaction tests are not credentials.
+    "Anthropic API key literal": re.compile(r"sk-ant-[A-Za-z0-9_-]{40,}"),
     "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 FORBIDDEN_PRICE_IMPORTS = re.compile(

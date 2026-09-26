@@ -1,0 +1,8 @@
+# Numeric stack recorded in the committed synthetic results (the "Software:" line
+# of projects/llm-factor-mining/results/synthetic_benchmark/summary.md).
+# scripts/bootstrap.sh and CI install with `-c configs/constraints.txt` so that a
+# rerun uses the same versions; tests/test_suite_contract.py keeps the two in sync.
+# Change these pins only together with a regeneration of the committed results.
+numpy==2.4.6
+pandas==2.3.3
+scipy==1.17.1

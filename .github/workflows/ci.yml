@@ -16,12 +16,13 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
+            configs/constraints.txt
             packages/quant-marketdata/pyproject.toml
             projects/quant-research-platform/pyproject.toml
             projects/equity-pairs-research/pyproject.toml
@@ -36,3 +37,35 @@ jobs:
         run: ./scripts/test-all.sh
       - name: Audit public repository
         run: python scripts/repository-audit.py
+
+  llm-sdk:
+    # The same offline tests of the two LLM research lines, with the optional
+    # Anthropic SDK installed, so that the tests that build real SDK error and
+    # schema objects run instead of being skipped. No API key is configured and
+    # no test reaches the network.
+    name: LLM research lines with the Anthropic SDK (Python 3.12)
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            configs/constraints.txt
+            packages/quant-marketdata/pyproject.toml
+            projects/llm-factor-mining/pyproject.toml
+            projects/marketdata-agent/pyproject.toml
+      - name: Install the LLM research lines with the llm extra
+        run: |
+          python -m pip install -c configs/constraints.txt -e "packages/quant-marketdata[dev]"
+          python -m pip install -c configs/constraints.txt -e "projects/llm-factor-mining[llm,dev]" -e "projects/marketdata-agent[llm,dev]"
+      # The SDK tests skip when these imports fail; fail loudly here instead.
+      - name: Check that the SDK is importable
+        run: python -c "import anthropic, httpx2; print('anthropic', anthropic.__version__)"
+      - name: Test the LLM research lines against the SDK
+        run: |
+          python -m pytest -q -rs -p no:cacheprovider projects/llm-factor-mining/tests
+          python -m pytest -q -rs -p no:cacheprovider projects/marketdata-agent/tests

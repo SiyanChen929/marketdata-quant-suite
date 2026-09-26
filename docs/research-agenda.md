@@ -13,8 +13,8 @@ The agenda is to build, and then evaluate, the controls that make an LLM's contr
 [`projects/llm-factor-mining`](../projects/llm-factor-mining) · [research plan](../projects/llm-factor-mining/docs/research-plan.md) · [paper draft](../projects/llm-factor-mining/paper/)
 
 - **Question.** At an equal trial budget, does LLM-guided program search yield equity factors that survive multiple-testing control and one sealed test more often than random grammar search and genetic programming (Koza, 1992)? How much of any edge is rediscovery of known factors (Kakushadze, 2016) or memorization, rather than search? This carries LLM program search (Romera-Paredes et al., 2024) into a domain where every candidate is a test on one noisy history.
-- **Method.** A typed factor language that cannot look ahead; formation-only feedback; a hash-chained ledger in which every proposal is a trial; two-stage Benjamini–Hochberg selection (Benjamini & Hochberg, 1995); a test hold-out committed before it is revealed; a planted-alpha benchmark with null markets; a knowledge-cutoff difference-in-differences for memorization.
-- **Today.** The harness, two baselines and a committed synthetic benchmark. On synthetic data it already shows that a formation screen alone is not a valid false-discovery control for a feedback-driven proposer, and that syntax-based novelty overstates how new a factor is.
+- **Method.** A typed factor language that cannot look ahead; formation-only feedback; a hash-chained ledger that logs every proposal and counts every non-duplicate one as a trial; two-stage Benjamini–Hochberg selection (Benjamini & Hochberg, 1995); a test hold-out committed before it is revealed; a planted-alpha benchmark with null markets; a knowledge-cutoff difference-in-differences for memorization.
+- **Today.** The harness, two baselines and a committed synthetic benchmark. The synthetic results are consistent with the design argument that a formation screen alone is not a valid false-discovery control for a feedback-driven proposer: genetic programming passed candidates through the screen on 3 of 10 null markets, and confirmation on unseen validation data removed them all. They also show syntax-based novelty rating the selected factors as newer than value-based novelty does. With 3 seeds per planted cell and 10 null seeds, none of this is a statistical claim.
 - **Next.** The LLM arm, a classic-library baseline, ablations, bootstrap tests (Hansen, 2005; Romano & Wolf, 2005) and sealed real-data reveals.
 
 ## Line 2: grounded, point-in-time tool use
@@ -23,7 +23,7 @@ The agenda is to build, and then evaluate, the controls that make an LLM's contr
 
 - **Question.** Can a tool-using copilot (Yao et al., 2023) answer quantitative market questions correctly, with every number supported by the tool output it cites, while never reading data after its as-of date and never executing a trade? What do accuracy and safety cost in tokens and latency?
 - **Method.** An as-of clock that refuses later dates, so attempts are counted; a policy gate that cannot enable execution; content-addressed provenance; a rounding-aware verifier that makes hallucination (Ji et al., 2023) measurable claim by claim; a benchmark with independent ground truth, cutoff traps and trade requests that claim prior approval. It adds point-in-time and action-safety constraints to document-based financial QA (Chen et al., 2021; Islam et al., 2023).
-- **Today.** The governed runtime, a Claude backend with record and replay, the benchmark, five scripted baselines with byte-reproducible results, a verifier stress test and a power analysis.
+- **Today.** The governed runtime, a Claude backend with record and replay, the benchmark, six scripted baselines with byte-reproducible results, a verifier stress test and a power analysis.
 - **Next.** All model runs, human validation of the verifier, an injection-through-tool-output suite, and a real-data replication on point-in-time-adjusted prices.
 
 ## Shared methods
@@ -49,7 +49,7 @@ The agenda is to build, and then evaluate, the controls that make an LLM's contr
 | Nov 2026 | Synthetic LLM study on fresh seeds and null markets | Main evaluation with ablation arms |
 | Dec 2026 – Jan 2027 | Real-data preparation; formation and validation runs only | Effort sweep, verifier annotation, adversarial suite; real-data replication subject to licensing |
 | Feb 2027 | Pre-registered sealed reveals and result cards | Writing; first suitable deadline |
-| Mar – Sep 2027 | Manuscript; a prospective test window accrues for a later version | Extended journal version |
+| Mar – Apr 2027 | Manuscript; a prospective test window accrues from the commitment date for a later version | An extended journal version after the real-data replication (not yet scheduled) |
 
 Candidate venues, to be checked against each call for papers: ACM ICAIF, the KDD Applied Data Science track, the NeurIPS Datasets and Benchmarks track, FinNLP and finance workshops at ML conferences, ACL or EMNLP Findings, and the Journal of Financial Data Science or Quantitative Finance for extended versions.
 
