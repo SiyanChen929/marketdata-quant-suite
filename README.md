@@ -5,6 +5,14 @@
 
 **Research software for trustworthy AI in quantitative finance:** LLM-guided discovery under multiple-testing control, and grounded, point-in-time tool use. Both rest on one audited market-data gateway and on case studies that apply the same validation rules.
 
+## Start here
+
+For a short review of the research question, implementation and evidence, follow
+[the reviewer’s guide](docs/reviewer-guide.md). To check the software without
+credentials, use [the offline verification guide](docs/reproducibility.md).
+The current evidence is synthetic and scripted; LLM and real-market evaluations
+are pending.
+
 ## Research
 
 The two research lines study one problem, trustworthy AI for quantitative research. An LLM's contribution counts only if the system around it counts every trial the model makes, and binds every number the model reports to data that existed at the time. The [research agenda](docs/research-agenda.md) sets out the questions, methods and milestones.
@@ -88,12 +96,15 @@ Regenerate the evidence into a scratch directory and compare it with the committ
 
 ```bash
 python projects/marketdata-agent/scripts/run_benchmark.py --out /tmp/agent-bench     # about 35 s
-diff -r -x audit projects/marketdata-agent/results/benchmark /tmp/agent-bench      # no output: identical
+diff -r -x audit projects/marketdata-agent/results/benchmark /tmp/agent-bench      # identical on recorded stack
 python projects/llm-factor-mining/scripts/run_synthetic_benchmark.py \
   --out /tmp/lfm-bench --runs-dir /tmp/lfm-runs                                    # about 6 min
 python projects/llm-factor-mining/scripts/render_paper_tables.py --check
 python projects/marketdata-agent/scripts/render_paper_tables.py --check
 ```
+
+The agent summaries record the Python version; a run on a different Python version
+can differ in `environment.python` even when all scored results and audit heads match.
 
 On the recorded software stack (the summary's `Software:` line; `scripts/bootstrap.sh` pins numpy, pandas and scipy to it through [`configs/constraints.txt`](configs/constraints.txt)), the regenerated factor-mining summary differs from the committed one only in wall-clock timings and the recorded command line. That check ran on one machine; on other CPUs, floating-point rounding can move near-tied diagnostics in the last reported decimals.
 
